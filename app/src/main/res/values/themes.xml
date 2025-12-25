@@ -6,13 +6,10 @@
         <item name="postSplashScreenTheme">@style/Theme.Jellyspot</item>
     </style>
 
-    <!-- Main app theme - using AppCompat which is always available -->
-    <style name="Theme.Jellyspot" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <!-- Main app theme - minimal, Compose handles the real theming -->
+    <style name="Theme.Jellyspot" parent="android:Theme.Material.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorAccent">@color/accent</item>
+        <item name="android:windowBackground">@color/splash_background</item>
     </style>
 </resources>
