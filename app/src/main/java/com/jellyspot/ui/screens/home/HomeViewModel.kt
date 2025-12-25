@@ -145,7 +145,7 @@ class HomeViewModel @Inject constructor(
                         sections.add(HomeSection(
                             title = "Quick Picks",
                             tracks = quickPicks,
-                            type = SectionType.HORIZONTAL
+                            type = SectionType.GRID
                         ))
                     }
                     

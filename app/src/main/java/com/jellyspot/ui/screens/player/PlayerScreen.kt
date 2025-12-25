@@ -103,61 +103,79 @@ fun PlayerScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    // Album Art
-                    Surface(
+                    // Album Art with smooth animation
+                    AnimatedContent(
+                        targetState = track,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.92f, animationSpec = tween(300)))
+                                .togetherWith(fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.92f, animationSpec = tween(300)))
+                        },
+                        label = "album_art_transition",
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(1f)
-                            .padding(vertical = 16.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        tonalElevation = 8.dp,
-                        shadowElevation = 16.dp
-                    ) {
-                        if (track?.imageUrl != null) {
-                            AsyncImage(
-                                model = track.imageUrl,
-                                contentDescription = "Album art",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.MusicNote,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(100.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            .padding(vertical = 16.dp)
+                    ) { currentTrack ->
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            tonalElevation = 8.dp,
+                            shadowElevation = 16.dp,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            if (currentTrack?.imageUrl != null) {
+                                AsyncImage(
+                                    model = currentTrack.imageUrl,
+                                    contentDescription = "Album art",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.MusicNote,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(100.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Track info
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = track?.name ?: "No track playing",
-                            style = MaterialTheme.typography.headlineSmall,
-                            textAlign = TextAlign.Center,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = track?.artist ?: "—",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    // Track info with crossfade animation
+                    AnimatedContent(
+                        targetState = track,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(200)).togetherWith(fadeOut(animationSpec = tween(200)))
+                        },
+                        label = "track_info_transition"
+                    ) { currentTrack ->
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = currentTrack?.name ?: "No track playing",
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = currentTrack?.artist ?: "—",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))

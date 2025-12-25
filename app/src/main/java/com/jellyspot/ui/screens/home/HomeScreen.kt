@@ -306,12 +306,12 @@ private fun ArtistsSection(
 private fun ArtistCircle(artist: ArtistItem, onClick: () -> Unit) {
     Column(
         modifier = Modifier
-            .width(80.dp)
+            .width(100.dp)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
-            modifier = Modifier.size(72.dp),
+            modifier = Modifier.size(90.dp),
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer,
             shadowElevation = 4.dp
@@ -365,20 +365,20 @@ private fun TrackSection(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(section.tracks) { track ->
-                        TrackCard(track = track, onClick = { onTrackClick(track) }, modifier = Modifier.width(100.dp))
+                        TrackCard(track = track, onClick = { onTrackClick(track) }, modifier = Modifier.width(120.dp))
                     }
                 }
             }
             SectionType.GRID -> {
                 LazyHorizontalGrid(
-                    rows = GridCells.Fixed(2),
+                    rows = GridCells.Fixed(3),
                     contentPadding = PaddingValues(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.height(230.dp)
+                    modifier = Modifier.height(380.dp)
                 ) {
                     items(section.tracks) { track ->
-                        TrackCard(track = track, onClick = { onTrackClick(track) }, modifier = Modifier.width(100.dp))
+                        TrackCard(track = track, onClick = { onTrackClick(track) }, modifier = Modifier.width(120.dp))
                     }
                 }
             }
@@ -453,9 +453,9 @@ private fun TrackCard(track: TrackEntity, onClick: () -> Unit, modifier: Modifie
 
 @Composable
 private fun LargeTrackCard(track: TrackEntity, onClick: () -> Unit) {
-    ElevatedCard(onClick = onClick, modifier = Modifier.width(280.dp), shape = RoundedCornerShape(16.dp)) {
+    ElevatedCard(onClick = onClick, modifier = Modifier.width(300.dp), shape = RoundedCornerShape(16.dp)) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(modifier = Modifier.size(64.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+            Surface(modifier = Modifier.size(80.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     if (track.imageUrl != null) {

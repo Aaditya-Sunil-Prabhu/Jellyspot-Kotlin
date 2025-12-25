@@ -176,13 +176,6 @@ fun LibraryScreen(
                         onPlaylistClick = { onNavigateToDetail("playlist", it.id) },
                         onDeletePlaylist = { viewModel.deletePlaylist(it.id) }
                     )
-                    
-                    LibraryTab.FOLDERS -> FoldersList(
-                        folders = uiState.folders,
-                        selectedFolders = uiState.selectedFolders,
-                        onFolderToggle = { viewModel.toggleFolderSelection(it) },
-                        onSelectAll = { viewModel.selectAllFolders() }
-                    )
                 }
             }
         }
@@ -534,7 +527,6 @@ private fun LibraryTab.displayName() = when (this) {
     LibraryTab.ALBUMS -> "Albums"
     LibraryTab.ARTISTS -> "Artists"
     LibraryTab.PLAYLISTS -> "Playlists"
-    LibraryTab.FOLDERS -> "Folders"
 }
 
 private fun SortOrder.displayName() = when (this) {

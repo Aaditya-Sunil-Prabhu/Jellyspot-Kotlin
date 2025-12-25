@@ -2,6 +2,8 @@ package com.jellyspot.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jellyspot.data.repository.FolderInfo
+import com.jellyspot.data.repository.LocalMusicRepository
 import com.jellyspot.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -16,7 +18,11 @@ data class SettingsUiState(
     val crossfadeDuration: Int = 0,
     val jellyfinServerUrl: String = "",
     val jellyfinUsername: String = "",
-    val isJellyfinConnected: Boolean = false
+    val isJellyfinConnected: Boolean = false,
+    // Folder management
+    val folders: List<FolderInfo> = emptyList(),
+    val selectedFolders: Set<String> = emptySet(),
+    val showFoldersDialog: Boolean = false
 )
 
 enum class ThemeOption(val displayName: String) {
@@ -40,7 +46,8 @@ enum class AudioQuality(val displayName: String) {
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val localMusicRepository: LocalMusicRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -48,6 +55,7 @@ class SettingsViewModel @Inject constructor(
 
     init {
         loadSettings()
+        loadFolders()
     }
 
     private fun loadSettings() {
@@ -73,6 +81,14 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.jellyfinServerUrl.collect { url ->
                 _uiState.update { it.copy(jellyfinServerUrl = url ?: "") }
             }
+        }
+    }
+
+    private fun loadFolders() {
+        viewModelScope.launch {
+            val folders = localMusicRepository.getAvailableFolders()
+            val selected = settingsRepository.selectedFolderPaths.first()
+            _uiState.update { it.copy(folders = folders, selectedFolders = selected) }
         }
     }
 
@@ -110,4 +126,33 @@ class SettingsViewModel @Inject constructor(
             _uiState.update { it.copy(crossfadeDuration = seconds) }
         }
     }
+
+    fun showFoldersDialog() {
+        _uiState.update { it.copy(showFoldersDialog = true) }
+    }
+
+    fun hideFoldersDialog() {
+        _uiState.update { it.copy(showFoldersDialog = false) }
+    }
+
+    fun toggleFolderSelection(folderPath: String) {
+        viewModelScope.launch {
+            val current = _uiState.value.selectedFolders.toMutableSet()
+            if (current.contains(folderPath)) {
+                current.remove(folderPath)
+            } else {
+                current.add(folderPath)
+            }
+            settingsRepository.setSelectedFolderPaths(current)
+            _uiState.update { it.copy(selectedFolders = current) }
+        }
+    }
+
+    fun selectAllFolders() {
+        viewModelScope.launch {
+            settingsRepository.setSelectedFolderPaths(emptySet())
+            _uiState.update { it.copy(selectedFolders = emptySet()) }
+        }
+    }
 }
+

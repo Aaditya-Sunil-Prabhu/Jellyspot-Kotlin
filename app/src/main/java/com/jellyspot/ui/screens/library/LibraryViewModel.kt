@@ -31,7 +31,7 @@ data class LibraryUiState(
 )
 
 enum class LibraryTab {
-    SONGS, ALBUMS, ARTISTS, PLAYLISTS, FOLDERS
+    SONGS, ALBUMS, ARTISTS, PLAYLISTS
 }
 
 enum class SortOrder {

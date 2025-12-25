@@ -70,10 +70,29 @@ class PlayerManager @Inject constructor(
                 try {
                     mediaController = controllerFuture.get()
                     mediaController?.addListener(playerListener)
+                    
+                    // Start continuous position updates for smooth progress sync
+                    startPositionUpdates()
                 } catch (e: Exception) {
                     // Handle error
                 }
             }, MoreExecutors.directExecutor())
+        }
+    }
+    
+    /**
+     * Start continuous position updates while playing.
+     * This ensures MiniPlayer and PlayerScreen progress bars stay in sync.
+     */
+    private fun startPositionUpdates() {
+        scope.launch {
+            while (true) {
+                if (_isPlaying.value) {
+                    _positionMs.value = mediaController?.currentPosition ?: 0L
+                    _durationMs.value = mediaController?.duration?.coerceAtLeast(0) ?: 0L
+                }
+                delay(250) // Update 4x per second for smooth progress
+            }
         }
     }
 

@@ -3,6 +3,7 @@ package com.jellyspot.ui.screens.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -56,6 +57,20 @@ fun SettingsScreen(
                             onClick = onNavigateToJellyfinLogin
                         )
                     }
+                }
+            }
+            
+            // Library Section (Folders moved here)
+            item {
+                SettingsSection(title = "Library") {
+                    SettingsClickableItem(
+                        icon = Icons.Default.Folder,
+                        title = "Manage Folders",
+                        subtitle = if (uiState.selectedFolders.isEmpty()) 
+                                       "All folders (${uiState.folders.size})" 
+                                   else "${uiState.selectedFolders.size} folders selected",
+                        onClick = { viewModel.showFoldersDialog() }
+                    )
                 }
             }
             
@@ -152,6 +167,70 @@ fun SettingsScreen(
             onDismiss = { showQualityDialog = false }
         )
     }
+    
+    // Folders Dialog
+    if (uiState.showFoldersDialog) {
+        FoldersDialog(
+            folders = uiState.folders,
+            selectedFolders = uiState.selectedFolders,
+            onFolderToggle = { viewModel.toggleFolderSelection(it) },
+            onSelectAll = { viewModel.selectAllFolders() },
+            onDismiss = { viewModel.hideFoldersDialog() }
+        )
+    }
+}
+
+@Composable
+private fun FoldersDialog(
+    folders: List<com.jellyspot.data.repository.FolderInfo>,
+    selectedFolders: Set<String>,
+    onFolderToggle: (String) -> Unit,
+    onSelectAll: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Manage Folders") },
+        text = {
+            LazyColumn {
+                item {
+                    ListItem(
+                        modifier = Modifier.clickable(onClick = onSelectAll),
+                        headlineContent = { Text("All Folders") },
+                        supportingContent = { Text("Include music from all folders") },
+                        leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
+                        trailingContent = {
+                            RadioButton(
+                                selected = selectedFolders.isEmpty(),
+                                onClick = onSelectAll
+                            )
+                        }
+                    )
+                    HorizontalDivider()
+                }
+                items(folders) { folder ->
+                    val isSelected = selectedFolders.isEmpty() || selectedFolders.contains(folder.path)
+                    ListItem(
+                        modifier = Modifier.clickable { onFolderToggle(folder.path) },
+                        headlineContent = { Text(folder.displayName) },
+                        supportingContent = { Text("${folder.trackCount} songs") },
+                        leadingContent = { Icon(Icons.Default.FolderOpen, contentDescription = null) },
+                        trailingContent = {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = { onFolderToggle(folder.path) }
+                            )
+                        }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        }
+    )
 }
 
 @Composable
@@ -254,3 +333,4 @@ private fun SelectionDialog(
         }
     )
 }
+
