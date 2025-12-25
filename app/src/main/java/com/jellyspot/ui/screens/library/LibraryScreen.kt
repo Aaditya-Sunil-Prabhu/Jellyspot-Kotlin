@@ -1,5 +1,9 @@
 package com.jellyspot.ui.screens.library
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,8 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.content.PermissionChecker
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.jellyspot.data.local.entities.TrackEntity
@@ -29,8 +37,40 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var hasPermission by remember { mutableStateOf(false) }
+    
+    // Determine which permission to request based on Android version
+    val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.READ_MEDIA_AUDIO
+    } else {
+        Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+    
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasPermission = isGranted
+        if (isGranted) {
+            viewModel.refreshLibrary()
+        }
+    }
+    
+    // Check permission on launch
+    LaunchedEffect(Unit) {
+        hasPermission = ContextCompat.checkSelfPermission(
+            context, audioPermission
+        ) == PermissionChecker.PERMISSION_GRANTED
+        
+        if (hasPermission) {
+            viewModel.refreshLibrary()
+        } else {
+            permissionLauncher.launch(audioPermission)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -62,7 +102,13 @@ fun LibraryScreen(
                     }
                     
                     // Refresh button
-                    IconButton(onClick = { viewModel.refreshLibrary() }) {
+                    IconButton(onClick = { 
+                        if (hasPermission) {
+                            viewModel.refreshLibrary()
+                        } else {
+                            permissionLauncher.launch(audioPermission)
+                        }
+                    }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 }
@@ -81,56 +127,63 @@ fun LibraryScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Scanning progress
-            AnimatedVisibility(visible = uiState.isScanning) {
-                LinearProgressIndicator(
-                    progress = { uiState.scanProgress },
-                    modifier = Modifier.fillMaxWidth()
+            // Permission denied state
+            if (!hasPermission) {
+                PermissionDeniedState(
+                    onRequestPermission = { permissionLauncher.launch(audioPermission) }
                 )
-            }
-
-            // Tab row
-            ScrollableTabRow(
-                selectedTabIndex = uiState.selectedTab.ordinal,
-                edgePadding = 16.dp
-            ) {
-                LibraryTab.entries.forEach { tab ->
-                    Tab(
-                        selected = uiState.selectedTab == tab,
-                        onClick = { viewModel.selectTab(tab) },
-                        text = { Text(tab.displayName()) }
+            } else {
+                // Scanning progress
+                AnimatedVisibility(visible = uiState.isScanning) {
+                    LinearProgressIndicator(
+                        progress = { uiState.scanProgress },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-            }
 
-            // Content based on selected tab
-            when (uiState.selectedTab) {
-                LibraryTab.SONGS -> TracksList(
-                    tracks = uiState.tracks,
-                    onTrackClick = { track ->
-                        // TODO: Play track
-                        onNavigateToPlayer()
-                    },
-                    onFavoriteClick = { viewModel.toggleFavorite(it.id) },
-                    isFavorite = { track -> uiState.favoriteTracks.any { it.id == track.id } }
-                )
-                
-                LibraryTab.ALBUMS -> AlbumsList(uiState.tracks, onNavigateToDetail)
-                
-                LibraryTab.ARTISTS -> ArtistsList(uiState.tracks, onNavigateToDetail)
-                
-                LibraryTab.PLAYLISTS -> PlaylistsList(
-                    playlists = uiState.playlists,
-                    onPlaylistClick = { onNavigateToDetail("playlist", it.id) },
-                    onDeletePlaylist = { viewModel.deletePlaylist(it.id) }
-                )
-                
-                LibraryTab.FOLDERS -> FoldersList(
-                    folders = uiState.folders,
-                    selectedFolders = uiState.selectedFolders,
-                    onFolderToggle = { viewModel.toggleFolderSelection(it) },
-                    onSelectAll = { viewModel.selectAllFolders() }
-                )
+                // Tab row
+                ScrollableTabRow(
+                    selectedTabIndex = uiState.selectedTab.ordinal,
+                    edgePadding = 16.dp
+                ) {
+                    LibraryTab.entries.forEach { tab ->
+                        Tab(
+                            selected = uiState.selectedTab == tab,
+                            onClick = { viewModel.selectTab(tab) },
+                            text = { Text(tab.displayName()) }
+                        )
+                    }
+                }
+
+                // Content based on selected tab
+                when (uiState.selectedTab) {
+                    LibraryTab.SONGS -> TracksList(
+                        tracks = uiState.tracks,
+                        onTrackClick = { track ->
+                            viewModel.playTrack(track)
+                            onNavigateToPlayer()
+                        },
+                        onFavoriteClick = { viewModel.toggleFavorite(it.id) },
+                        isFavorite = { track -> uiState.favoriteTracks.any { it.id == track.id } }
+                    )
+                    
+                    LibraryTab.ALBUMS -> AlbumsList(uiState.tracks, onNavigateToDetail)
+                    
+                    LibraryTab.ARTISTS -> ArtistsList(uiState.tracks, onNavigateToDetail)
+                    
+                    LibraryTab.PLAYLISTS -> PlaylistsList(
+                        playlists = uiState.playlists,
+                        onPlaylistClick = { onNavigateToDetail("playlist", it.id) },
+                        onDeletePlaylist = { viewModel.deletePlaylist(it.id) }
+                    )
+                    
+                    LibraryTab.FOLDERS -> FoldersList(
+                        folders = uiState.folders,
+                        selectedFolders = uiState.selectedFolders,
+                        onFolderToggle = { viewModel.toggleFolderSelection(it) },
+                        onSelectAll = { viewModel.selectAllFolders() }
+                    )
+                }
             }
         }
     }
@@ -144,6 +197,43 @@ fun LibraryScreen(
                 showCreatePlaylistDialog = false
             }
         )
+    }
+}
+
+@Composable
+private fun PermissionDeniedState(onRequestPermission: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Default.MusicOff,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            "Permission Required",
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            "Jellyspot needs access to your music files to display your library.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(onClick = onRequestPermission) {
+            Icon(Icons.Default.Folder, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Grant Permission")
+        }
     }
 }
 
@@ -197,14 +287,19 @@ private fun TrackItem(
             )
         },
         leadingContent = {
-            AsyncImage(
-                model = track.imageUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                contentScale = ContentScale.Crop
-            )
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(4.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.MusicNote,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
         },
         trailingContent = {
             IconButton(onClick = onFavoriteClick) {
@@ -234,11 +329,15 @@ private fun AlbumsList(tracks: List<TrackEntity>, onNavigateToDetail: (String, S
                     headlineContent = { Text(albumName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     supportingContent = { Text("${albumTracks.size} songs • ${albumTracks.firstOrNull()?.artist ?: ""}") },
                     leadingContent = {
-                        AsyncImage(
-                            model = albumTracks.firstOrNull()?.imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(4.dp))
-                        )
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Album, contentDescription = null)
+                            }
+                        }
                     }
                 )
             }
@@ -285,7 +384,7 @@ private fun PlaylistsList(
     onDeletePlaylist: (com.jellyspot.data.local.entities.PlaylistEntity) -> Unit
 ) {
     if (playlists.isEmpty()) {
-        EmptyState(Icons.Default.QueueMusic, "No playlists", "Create a playlist to organize your music")
+        EmptyState(Icons.Default.PlaylistPlay, "No playlists", "Create a playlist to organize your music")
     } else {
         LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
             items(playlists) { playlist ->
@@ -300,7 +399,7 @@ private fun PlaylistsList(
                             color = MaterialTheme.colorScheme.secondaryContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.QueueMusic, contentDescription = null)
+                                Icon(Icons.Default.PlaylistPlay, contentDescription = null)
                             }
                         }
                     },

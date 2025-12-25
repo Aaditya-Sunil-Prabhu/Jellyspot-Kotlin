@@ -8,6 +8,7 @@ import com.jellyspot.data.repository.FolderInfo
 import com.jellyspot.data.repository.LocalMusicRepository
 import com.jellyspot.data.repository.PlaylistRepository
 import com.jellyspot.data.repository.SettingsRepository
+import com.jellyspot.player.PlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -41,7 +42,8 @@ enum class SortOrder {
 class LibraryViewModel @Inject constructor(
     private val localMusicRepository: LocalMusicRepository,
     private val playlistRepository: PlaylistRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val playerManager: PlayerManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState())
@@ -49,6 +51,7 @@ class LibraryViewModel @Inject constructor(
 
     init {
         loadLibrary()
+        playerManager.initialize()
     }
 
     private fun loadLibrary() {
@@ -104,6 +107,15 @@ class LibraryViewModel @Inject constructor(
      */
     fun selectTab(tab: LibraryTab) {
         _uiState.update { it.copy(selectedTab = tab) }
+    }
+
+    /**
+     * Play a track (and set queue to all tracks).
+     */
+    fun playTrack(track: TrackEntity) {
+        val tracks = _uiState.value.tracks
+        val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+        playerManager.playTracks(tracks, index)
     }
 
     /**
