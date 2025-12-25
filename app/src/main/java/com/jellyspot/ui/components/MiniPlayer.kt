@@ -18,18 +18,22 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.jellyspot.data.local.entities.TrackEntity
 import com.jellyspot.player.PlayerManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
-import kotlin.math.abs
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * Mini player ViewModel for state management.
  */
-@androidx.lifecycle.ViewModel
-class MiniPlayerViewModel @javax.inject.Inject constructor(
+@HiltViewModel
+class MiniPlayerViewModel @Inject constructor(
     private val playerManager: PlayerManager
-) : androidx.lifecycle.ViewModel() {
+) : ViewModel() {
     val currentTrack: StateFlow<TrackEntity?> = playerManager.currentTrack
     val isPlaying: StateFlow<Boolean> = playerManager.isPlaying
     val positionMs: StateFlow<Long> = playerManager.positionMs

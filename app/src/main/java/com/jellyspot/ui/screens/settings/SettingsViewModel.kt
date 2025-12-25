@@ -71,7 +71,7 @@ class SettingsViewModel @Inject constructor(
         
         viewModelScope.launch {
             settingsRepository.jellyfinServerUrl.collect { url ->
-                _uiState.update { it.copy(jellyfinServerUrl = url) }
+                _uiState.update { it.copy(jellyfinServerUrl = url ?: "") }
             }
         }
     }

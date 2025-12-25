@@ -78,13 +78,7 @@ class HomeViewModel @Inject constructor(
                             sections.add(HomeSection("Recently Added", latest, SectionType.HORIZONTAL))
                         }
                         
-                        // Continue Listening
-                        val resume = jellyfinRepository.getResumeItems(10)
-                        if (resume.isNotEmpty()) {
-                            sections.add(HomeSection("Continue Listening", resume, SectionType.HORIZONTAL))
-                        }
-                        
-                        // All Music (sample)
+                        // All Music
                         val allMusic = jellyfinRepository.getAllMusic(30)
                         if (allMusic.isNotEmpty()) {
                             sections.add(HomeSection("Your Music", allMusic, SectionType.GRID))
