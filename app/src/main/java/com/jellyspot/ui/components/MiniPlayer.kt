@@ -179,10 +179,7 @@ fun MiniPlayer(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.basicMarquee(
-                                    iterations = Int.MAX_VALUE,
-                                    delayMillis = 2000,
-                                    initialDelayMillis = 3000,
-                                    velocity = 30.dp
+                                    iterations = Int.MAX_VALUE
                                 )
                             )
                             Text(
