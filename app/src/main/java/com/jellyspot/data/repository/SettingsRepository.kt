@@ -26,6 +26,7 @@ class SettingsRepository @Inject constructor(
         val CROSSFADE_DURATION = intPreferencesKey("crossfade_duration")
         
         // Appearance settings
+        val THEME = stringPreferencesKey("theme") // LIGHT, DARK, SYSTEM
         val ADAPTIVE_BACKGROUND = booleanPreferencesKey("adaptive_background")
         val BACKGROUND_TYPE = stringPreferencesKey("background_type") // off, blurred, blurhash
         val THEME_COLOR = stringPreferencesKey("theme_color")
@@ -79,6 +80,9 @@ class SettingsRepository @Inject constructor(
 
     val amoledMode: Flow<Boolean> = dataStore.data.map { it[AMOLED_MODE] ?: false }
     suspend fun setAmoledMode(enabled: Boolean) = dataStore.edit { it[AMOLED_MODE] = enabled }
+
+    val theme: Flow<String> = dataStore.data.map { it[THEME] ?: "SYSTEM" }
+    suspend fun setTheme(theme: String) = dataStore.edit { it[THEME] = theme }
 
     val showTechnicalDetails: Flow<Boolean> = dataStore.data.map { it[SHOW_TECHNICAL_DETAILS] ?: false }
     suspend fun setShowTechnicalDetails(enabled: Boolean) = dataStore.edit { it[SHOW_TECHNICAL_DETAILS] = enabled }
