@@ -128,8 +128,8 @@ dependencies {
     implementation("androidx.hilt:hilt-work:1.2.0")
     ksp("androidx.hilt:hilt-compiler:1.2.0")
     
-    // NewPipe Extractor for YouTube Music
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.2")
+    // NewPipe Extractor for YouTube Music (disabled for now - complex JitPack setup)
+    // implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.2")
     
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
