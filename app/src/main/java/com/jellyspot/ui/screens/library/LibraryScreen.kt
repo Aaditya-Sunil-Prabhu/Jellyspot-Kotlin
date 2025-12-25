@@ -289,15 +289,24 @@ private fun TrackItem(
         leadingContent = {
             Surface(
                 modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.MusicNote,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
                     )
+                    if (track.imageUrl != null) {
+                        AsyncImage(
+                            model = track.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
         },
@@ -331,11 +340,25 @@ private fun AlbumsList(tracks: List<TrackEntity>, onNavigateToDetail: (String, S
                     leadingContent = {
                         Surface(
                             modifier = Modifier.size(48.dp),
-                            shape = RoundedCornerShape(4.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.secondaryContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Album, contentDescription = null)
+                                Icon(
+                                    Icons.Default.Album,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f)
+                                )
+                                val imageUrl = albumTracks.firstOrNull()?.imageUrl
+                                if (imageUrl != null) {
+                                    AsyncImage(
+                                        model = imageUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
                             }
                         }
                     }
@@ -363,11 +386,24 @@ private fun ArtistsList(tracks: List<TrackEntity>, onNavigateToDetail: (String, 
                     leadingContent = {
                         Surface(
                             modifier = Modifier.size(48.dp),
-                            shape = RoundedCornerShape(24.dp),
+                            shape = androidx.compose.foundation.shape.CircleShape,
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(artistName.take(1).uppercase(), style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    artistName.take(1).uppercase(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                                )
+                                val imageUrl = artistTracks.firstOrNull()?.imageUrl
+                                if (imageUrl != null) {
+                                    AsyncImage(
+                                        model = imageUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
                             }
                         }
                     }

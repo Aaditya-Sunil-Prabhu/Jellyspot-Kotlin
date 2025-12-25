@@ -1,7 +1,6 @@
 package com.jellyspot.ui.screens.home
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -25,12 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.jellyspot.data.local.entities.TrackEntity
@@ -51,36 +49,11 @@ private fun getGreeting(): String {
 // Get quirky subtitle based on time
 private fun getQuirkySubtitle(): String {
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    val morningQuotes = listOf(
-        "Rise and shine! ☀️", 
-        "Coffee first, music second. ☕", 
-        "Let's start the day right.",
-        "Morning vibes loading... 🔋"
-    )
-    val afternoonQuotes = listOf(
-        "Keep the momentum going. 🚀", 
-        "Focus mode: ON. 🎧",
-        "Afternoon jams incoming.",
-        "Power through the slump!"
-    )
-    val eveningQuotes = listOf(
-        "Unwind time. 🍷", 
-        "Relax and listen. 🛋️",
-        "Evening chill session.",
-        "You earned this break."
-    )
-    val nightQuotes = listOf(
-        "Late night vibes. 🌙", 
-        "The world is quiet. 🤫",
-        "Just you and the music.",
-        "Owl mode activated. 🦉"
-    )
-    
     val quotes = when {
-        hour in 5..11 -> morningQuotes
-        hour in 12..16 -> afternoonQuotes
-        hour in 17..20 -> eveningQuotes
-        else -> nightQuotes
+        hour in 5..11 -> listOf("Rise and shine! ☀️", "Coffee first, music second. ☕", "Morning vibes loading... 🔋")
+        hour in 12..16 -> listOf("Keep the momentum going. 🚀", "Focus mode: ON. 🎧", "Afternoon jams incoming.")
+        hour in 17..20 -> listOf("Unwind time. 🍷", "Relax and listen. 🛋️", "Evening chill session.")
+        else -> listOf("Late night vibes. 🌙", "The world is quiet. 🤫", "Just you and the music.")
     }
     return quotes.random()
 }
@@ -122,7 +95,7 @@ fun HomeScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 120.dp) // Space for mini player
+            contentPadding = PaddingValues(bottom = 120.dp)
         ) {
             // Header with greeting
             item {
@@ -131,7 +104,6 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
-                    // Top row: Greeting + Source Selector
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -156,7 +128,6 @@ fun HomeScreen(
                             }
                         }
                         
-                        // Source Toggle Chip
                         SourceToggleChip(
                             currentSource = uiState.dataSource,
                             onSourceChange = { viewModel.setDataSource(it) }
@@ -178,9 +149,7 @@ fun HomeScreen(
             // Empty state
             if (uiState.sections.isEmpty() && !uiState.isLoading && uiState.errorMessage == null) {
                 item {
-                    EmptyStateCard(
-                        onScanLibrary = { viewModel.scanLocalLibrary() }
-                    )
+                    EmptyStateCard(onScanLibrary = { viewModel.scanLocalLibrary() })
                 }
             }
             
@@ -193,13 +162,22 @@ fun HomeScreen(
                         animationSpec = tween(500)
                     )
                 ) {
-                    HomeSection(
-                        section = section,
-                        onTrackClick = { track ->
-                            viewModel.playTrack(track, section.tracks)
-                            onNavigateToPlayer()
-                        }
-                    )
+                    when (section.type) {
+                        SectionType.ARTISTS -> ArtistsSection(
+                            title = section.title,
+                            artists = section.artists,
+                            onArtistClick = { artist ->
+                                onNavigateToDetail("artist", artist.id)
+                            }
+                        )
+                        else -> TrackSection(
+                            section = section,
+                            onTrackClick = { track ->
+                                viewModel.playTrack(track, section.tracks)
+                                onNavigateToPlayer()
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -246,24 +224,15 @@ private fun SourceToggleChip(
             )
         }
         
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = { Text("Local Music") },
-                onClick = {
-                    onSourceChange("local")
-                    expanded = false
-                },
+                onClick = { onSourceChange("local"); expanded = false },
                 leadingIcon = { Icon(Icons.Default.PhoneAndroid, null) }
             )
             DropdownMenuItem(
                 text = { Text("Jellyfin") },
-                onClick = {
-                    onSourceChange("jellyfin")
-                    expanded = false
-                },
+                onClick = { onSourceChange("jellyfin"); expanded = false },
                 leadingIcon = { Icon(Icons.Default.Cloud, null) }
             )
         }
@@ -273,17 +242,10 @@ private fun SourceToggleChip(
 @Composable
 private fun ErrorCard(message: String, onRetry: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        )
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.Warning, null, modifier = Modifier.size(48.dp))
             Spacer(modifier = Modifier.height(12.dp))
             Text(message, style = MaterialTheme.typography.bodyMedium)
@@ -296,31 +258,15 @@ private fun ErrorCard(message: String, onRetry: () -> Unit) {
 @Composable
 private fun EmptyStateCard(onScanLibrary: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(
-            modifier = Modifier.padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                Icons.Default.MusicNote,
-                null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+        Column(modifier = Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
             Text("No music found", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "Scan your device for music to get started",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("Scan your device for music", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(20.dp))
             FilledTonalButton(onClick = onScanLibrary) {
                 Icon(Icons.Default.Refresh, null)
@@ -331,8 +277,76 @@ private fun EmptyStateCard(onScanLibrary: () -> Unit) {
     }
 }
 
+// ==================== ARTISTS SECTION ====================
 @Composable
-private fun HomeSection(
+private fun ArtistsSection(
+    title: String,
+    artists: List<ArtistItem>,
+    onArtistClick: (ArtistItem) -> Unit
+) {
+    Column(modifier = Modifier.padding(vertical = 12.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+        )
+        
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(artists) { artist ->
+                ArtistCircle(artist = artist, onClick = { onArtistClick(artist) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistCircle(artist: ArtistItem, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .width(80.dp)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            modifier = Modifier.size(72.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            shadowElevation = 4.dp
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                )
+                if (artist.imageUrl != null) {
+                    AsyncImage(
+                        model = artist.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = artist.name,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+// ==================== TRACK SECTIONS ====================
+@Composable
+private fun TrackSection(
     section: HomeSection,
     onTrackClick: (TrackEntity) -> Unit
 ) {
@@ -345,16 +359,13 @@ private fun HomeSection(
         
         when (section.type) {
             SectionType.HORIZONTAL -> {
+                // Quick Picks style: 4 visible at once
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(section.tracks) { track ->
-                        TrackCard(
-                            track = track,
-                            onClick = { onTrackClick(track) },
-                            modifier = Modifier.width(150.dp)
-                        )
+                        TrackCard(track = track, onClick = { onTrackClick(track) }, modifier = Modifier.width(100.dp))
                     }
                 }
             }
@@ -367,11 +378,7 @@ private fun HomeSection(
                     modifier = Modifier.height(230.dp)
                 ) {
                     items(section.tracks) { track ->
-                        TrackCard(
-                            track = track,
-                            onClick = { onTrackClick(track) },
-                            modifier = Modifier.width(150.dp)
-                        )
+                        TrackCard(track = track, onClick = { onTrackClick(track) }, modifier = Modifier.width(100.dp))
                     }
                 }
             }
@@ -381,57 +388,42 @@ private fun HomeSection(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(section.tracks) { track ->
-                        LargeTrackCard(
-                            track = track,
-                            onClick = { onTrackClick(track) }
-                        )
+                        LargeTrackCard(track = track, onClick = { onTrackClick(track) })
                     }
                 }
             }
+            else -> {} // ARTISTS handled separately
         }
     }
 }
 
 @Composable
-private fun TrackCard(
-    track: TrackEntity,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.clickable(onClick = onClick)
-    ) {
+private fun TrackCard(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.clickable(onClick = onClick)) {
         Surface(
-            modifier = Modifier
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(12.dp)),
+            modifier = Modifier.aspectRatio(1f).clip(RoundedCornerShape(12.dp)),
             tonalElevation = 2.dp,
             shadowElevation = 4.dp
         ) {
             Box {
-                // Placeholder background
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                )
+                    modifier = Modifier.fillMaxSize().background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primaryContainer,
+                                MaterialTheme.colorScheme.surfaceVariant
                             )
-                        ),
+                        )
+                    ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.MusicNote,
                         contentDescription = null,
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(32.dp),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
                     )
                 }
-                
-                // Actual image (if available)
                 if (track.imageUrl != null) {
                     AsyncImage(
                         model = track.imageUrl,
@@ -442,16 +434,16 @@ private fun TrackCard(
                 }
             }
         }
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = track.name,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         Text(
             text = track.artist,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -460,62 +452,24 @@ private fun TrackCard(
 }
 
 @Composable
-private fun LargeTrackCard(
-    track: TrackEntity,
-    onClick: () -> Unit
-) {
-    ElevatedCard(
-        onClick = onClick,
-        modifier = Modifier.width(300.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(80.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
+private fun LargeTrackCard(track: TrackEntity, onClick: () -> Unit) {
+    ElevatedCard(onClick = onClick, modifier = Modifier.width(280.dp), shape = RoundedCornerShape(16.dp)) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(modifier = Modifier.size(64.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.MusicNote,
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     if (track.imageUrl != null) {
-                        AsyncImage(
-                            model = track.imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                        AsyncImage(model = track.imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     }
                 }
             }
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = track.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Text(text = track.name, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = track.artist,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(text = track.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            FilledIconButton(
-                onClick = onClick,
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
+            FilledIconButton(onClick = onClick, colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)) {
                 Icon(Icons.Default.PlayArrow, contentDescription = "Play")
             }
         }

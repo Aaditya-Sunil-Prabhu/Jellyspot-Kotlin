@@ -13,16 +13,30 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
+ * Artist data for home screen.
+ */
+data class ArtistItem(
+    val id: String,
+    val name: String,
+    val imageUrl: String? = null,
+    val trackCount: Int = 0
+)
+
+/**
  * Home section data.
  */
 data class HomeSection(
     val title: String,
-    val tracks: List<TrackEntity>,
+    val tracks: List<TrackEntity> = emptyList(),
+    val artists: List<ArtistItem> = emptyList(),
     val type: SectionType = SectionType.HORIZONTAL
 )
 
 enum class SectionType {
-    HORIZONTAL, GRID, LARGE
+    HORIZONTAL,  // Scrollable row of track cards
+    GRID,        // 2-row grid of track cards
+    LARGE,       // Large cards with play button
+    ARTISTS      // Circle avatars for artists
 }
 
 /**
@@ -72,16 +86,13 @@ class HomeViewModel @Inject constructor(
             when (dataSource) {
                 "jellyfin" -> {
                     if (jellyfinRepository.initializeFromStorage()) {
-                        // Recently Added
                         val latest = jellyfinRepository.getLatestMusic(20)
                         if (latest.isNotEmpty()) {
-                            sections.add(HomeSection("Recently Added", latest, SectionType.HORIZONTAL))
+                            sections.add(HomeSection("Recently Added", latest, type = SectionType.HORIZONTAL))
                         }
-                        
-                        // All Music
                         val allMusic = jellyfinRepository.getAllMusic(30)
                         if (allMusic.isNotEmpty()) {
-                            sections.add(HomeSection("Your Music", allMusic, SectionType.GRID))
+                            sections.add(HomeSection("Your Music", allMusic, type = SectionType.GRID))
                         }
                     } else {
                         _uiState.update { it.copy(errorMessage = "Not logged in to Jellyfin") }
@@ -92,34 +103,82 @@ class HomeViewModel @Inject constructor(
                     val tracks = localMusicRepository.getFilteredTracks().first()
                     
                     if (tracks.isEmpty()) {
-                        // No tracks - prompt scan
-                        sections.add(HomeSection("Getting Started", emptyList()))
-                    } else {
-                        // Recently Played
-                        val recentlyPlayed = tracks.filter { it.lastPlayedAt != null }
-                            .sortedByDescending { it.lastPlayedAt }
-                            .take(20)
-                        if (recentlyPlayed.isNotEmpty()) {
-                            sections.add(HomeSection("Recently Played", recentlyPlayed, SectionType.HORIZONTAL))
-                        }
-                        
-                        // Most Played
-                        val mostPlayed = tracks.filter { it.playCount > 0 }
-                            .sortedByDescending { it.playCount }
-                            .take(20)
-                        if (mostPlayed.isNotEmpty()) {
-                            sections.add(HomeSection("Most Played", mostPlayed, SectionType.HORIZONTAL))
-                        }
-                        
-                        // Favorites
-                        val favorites = tracks.filter { it.isFavorite }.take(20)
-                        if (favorites.isNotEmpty()) {
-                            sections.add(HomeSection("Favorites", favorites, SectionType.HORIZONTAL))
-                        }
-                        
-                        // All Songs (shuffled sample)
-                        val shuffled = tracks.shuffled().take(30)
-                        sections.add(HomeSection("Shuffle All", shuffled, SectionType.GRID))
+                        // No tracks - show empty state
+                        _uiState.update { it.copy(isLoading = false, sections = emptyList()) }
+                        return
+                    }
+                    
+                    // 1. ARTISTS SECTION (Circle avatars at top)
+                    val artistMap = mutableMapOf<String, MutableList<TrackEntity>>()
+                    tracks.forEach { track ->
+                        val artistName = track.artist.ifBlank { "Unknown Artist" }
+                        artistMap.getOrPut(artistName) { mutableListOf() }.add(track)
+                    }
+                    
+                    val artists = artistMap.map { (name, trackList) ->
+                        ArtistItem(
+                            id = "artist_${name.lowercase().replace(" ", "_")}",
+                            name = name,
+                            imageUrl = trackList.firstOrNull()?.imageUrl,
+                            trackCount = trackList.size
+                        )
+                    }.sortedByDescending { it.trackCount }.take(12)
+                    
+                    if (artists.isNotEmpty()) {
+                        sections.add(HomeSection(
+                            title = "Artists",
+                            artists = artists,
+                            type = SectionType.ARTISTS
+                        ))
+                    }
+                    
+                    // 2. QUICK PICKS (12 random + recently played songs)
+                    val recentlyPlayed = tracks.filter { it.lastPlayedAt != null }
+                        .sortedByDescending { it.lastPlayedAt }
+                        .take(6)
+                    val randomPicks = tracks.filter { it.lastPlayedAt == null }
+                        .shuffled()
+                        .take(12 - recentlyPlayed.size)
+                    val quickPicks = (recentlyPlayed + randomPicks).take(12)
+                    
+                    if (quickPicks.isNotEmpty()) {
+                        sections.add(HomeSection(
+                            title = "Quick Picks",
+                            tracks = quickPicks,
+                            type = SectionType.HORIZONTAL
+                        ))
+                    }
+                    
+                    // 3. RECENTLY ADDED (sorted by creation date)
+                    val recentlyAdded = tracks.sortedByDescending { it.createdAt }.take(12)
+                    if (recentlyAdded.isNotEmpty()) {
+                        sections.add(HomeSection(
+                            title = "Recently Added",
+                            tracks = recentlyAdded,
+                            type = SectionType.HORIZONTAL
+                        ))
+                    }
+                    
+                    // 4. MOST PLAYED
+                    val mostPlayed = tracks.filter { it.playCount > 0 }
+                        .sortedByDescending { it.playCount }
+                        .take(12)
+                    if (mostPlayed.isNotEmpty()) {
+                        sections.add(HomeSection(
+                            title = "Most Played",
+                            tracks = mostPlayed,
+                            type = SectionType.HORIZONTAL
+                        ))
+                    }
+                    
+                    // 5. FAVORITES
+                    val favorites = tracks.filter { it.isFavorite }.take(12)
+                    if (favorites.isNotEmpty()) {
+                        sections.add(HomeSection(
+                            title = "Favorites",
+                            tracks = favorites,
+                            type = SectionType.LARGE
+                        ))
                     }
                 }
             }
