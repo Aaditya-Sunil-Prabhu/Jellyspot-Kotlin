@@ -29,6 +29,8 @@ import com.jellyspot.ui.screens.onboarding.OnboardingScreen
 import com.jellyspot.ui.components.BottomNavBar
 import com.jellyspot.ui.components.MiniPlayer
 
+import com.jellyspot.ui.screens.auth.JellyfinLoginScreen
+
 /**
  * Navigation routes for the app.
  */
@@ -41,6 +43,7 @@ object Routes {
     const val PLAYER = "player"
     const val DETAIL = "detail/{type}/{id}"
     const val DOWNLOADS = "downloads"
+    const val JELLYFIN_LOGIN = "jellyfin_login"
     
     fun detail(type: String, id: String) = "detail/$type/$id"
 }
@@ -166,7 +169,19 @@ fun JellyspotNavGraph(
 
             // Settings
             composable(Routes.SETTINGS) {
-                SettingsScreen()
+                SettingsScreen(
+                    onNavigateToJellyfinLogin = {
+                        navController.navigate(Routes.JELLYFIN_LOGIN)
+                    }
+                )
+            }
+
+            // Jellyfin Login
+            composable(Routes.JELLYFIN_LOGIN) {
+                JellyfinLoginScreen(
+                    onLoginSuccess = { navController.popBackStack() },
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
             // Full-screen Player

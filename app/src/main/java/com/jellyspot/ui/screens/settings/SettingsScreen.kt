@@ -14,6 +14,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    onNavigateToJellyfinLogin: (() -> Unit)? = null,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -44,6 +45,17 @@ fun SettingsScreen(
                         subtitle = uiState.sourceMode.displayName,
                         onClick = { showSourceDialog = true }
                     )
+                    if (onNavigateToJellyfinLogin != null) {
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        SettingsClickableItem(
+                            icon = Icons.Default.Cloud,
+                            title = "Jellyfin Server",
+                            subtitle = if (uiState.jellyfinServerUrl.isNotEmpty()) 
+                                           uiState.jellyfinServerUrl 
+                                       else "Not connected",
+                            onClick = onNavigateToJellyfinLogin
+                        )
+                    }
                 }
             }
             
