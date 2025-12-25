@@ -4,10 +4,6 @@
 -keep class org.jellyfin.sdk.** { *; }
 -keepclassmembers class org.jellyfin.sdk.** { *; }
 
-# Keep NewPipe Extractor
--keep class org.schabi.newpipe.** { *; }
--keepclassmembers class org.schabi.newpipe.** { *; }
-
 # Kotlinx Serialization
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.AnnotationsKt
@@ -25,14 +21,37 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
-# Ktor
+# Ktor - dontwarn for JVM classes not available on Android
 -keep class io.ktor.** { *; }
 -keepclassmembers class io.ktor.** { *; }
+-dontwarn io.ktor.util.debug.**
+-dontwarn java.lang.management.**
 
 # Room
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *
 -dontwarn androidx.room.paging.**
 
-# Coil
+# Coil3
 -keep class coil3.** { *; }
+-dontwarn coil3.PlatformContext
+-dontwarn coil3.network.**
+
+# OkHttp
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
+
+# Hilt
+-keep class dagger.hilt.** { *; }
+-keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
+
+# Media3
+-keep class androidx.media3.** { *; }
+-dontwarn androidx.media3.**
+
+# General Android
+-keepattributes Signature
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
