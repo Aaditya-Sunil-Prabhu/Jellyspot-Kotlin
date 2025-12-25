@@ -7,15 +7,16 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.MoreExecutors
 import com.jellyspot.data.local.entities.TrackEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -63,11 +64,16 @@ class PlayerManager @Inject constructor(
                 context,
                 ComponentName(context, JellyspotMediaService::class.java)
             )
-            mediaController = MediaController.Builder(context, sessionToken)
-                .buildAsync()
-                .await()
-
-            mediaController?.addListener(playerListener)
+            val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+            
+            controllerFuture.addListener({
+                try {
+                    mediaController = controllerFuture.get()
+                    mediaController?.addListener(playerListener)
+                } catch (e: Exception) {
+                    // Handle error
+                }
+            }, MoreExecutors.directExecutor())
         }
     }
 
