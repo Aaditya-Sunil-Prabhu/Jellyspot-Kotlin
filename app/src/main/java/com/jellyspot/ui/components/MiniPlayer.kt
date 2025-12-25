@@ -15,10 +15,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -49,7 +51,18 @@ class MiniPlayerViewModel @Inject constructor(
 }
 
 /**
+ * Swipe direction for animation control.
+ */
+private enum class SwipeDirection {
+    NONE, LEFT, RIGHT
+}
+
+/**
  * Mini player component shown at the bottom of main screens.
+ * Features:
+ * - Swipe left for next song (text slides right to left)
+ * - Swipe right for previous song (text slides left to right)
+ * - Swipe/drag up to expand to fullscreen player
  */
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -63,8 +76,27 @@ fun MiniPlayer(
     val positionMs by viewModel.positionMs.collectAsState()
     val durationMs by viewModel.durationMs.collectAsState()
     
-    // Track swipe state
-    var swipeOffset by remember { mutableFloatStateOf(0f) }
+    // Swipe tracking for animations
+    var horizontalSwipeOffset by remember { mutableFloatStateOf(0f) }
+    var verticalSwipeOffset by remember { mutableFloatStateOf(0f) }
+    var lastSwipeDirection by remember { mutableStateOf(SwipeDirection.NONE) }
+    
+    // Track change counter to trigger animation
+    var trackChangeKey by remember { mutableIntStateOf(0) }
+    
+    // Remember previous track to detect changes via swipe
+    var previousTrackId by remember { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(currentTrack?.id) {
+        if (previousTrackId != null && currentTrack?.id != previousTrackId) {
+            // Track changed, increment key for animation
+            trackChangeKey++
+        }
+        previousTrackId = currentTrack?.id
+    }
+    
+    // Alpha for drag-up gesture
+    val dragAlpha = (1f - (-verticalSwipeOffset / 300f).coerceIn(0f, 1f))
 
     AnimatedVisibility(
         visible = currentTrack != null,
@@ -76,30 +108,42 @@ fun MiniPlayer(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp)
+                .alpha(dragAlpha)
+                // Vertical drag to expand player
                 .pointerInput(Unit) {
                     detectVerticalDragGestures(
                         onDragEnd = {
-                            if (swipeOffset < -50) {
+                            if (verticalSwipeOffset < -100) {
+                                // Dragged up enough - expand player
                                 onExpandPlayer()
                             }
-                            swipeOffset = 0f
+                            verticalSwipeOffset = 0f
                         },
                         onVerticalDrag = { _, dragAmount ->
-                            swipeOffset += dragAmount
+                            verticalSwipeOffset += dragAmount
                         }
                     )
                 }
+                // Horizontal swipe for prev/next
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
                             when {
-                                swipeOffset > 80 -> viewModel.skipPrevious()
-                                swipeOffset < -80 -> viewModel.skipNext()
+                                horizontalSwipeOffset > 80 -> {
+                                    // Swipe right = previous song
+                                    lastSwipeDirection = SwipeDirection.RIGHT
+                                    viewModel.skipPrevious()
+                                }
+                                horizontalSwipeOffset < -80 -> {
+                                    // Swipe left = next song
+                                    lastSwipeDirection = SwipeDirection.LEFT
+                                    viewModel.skipNext()
+                                }
                             }
-                            swipeOffset = 0f
+                            horizontalSwipeOffset = 0f
                         },
                         onHorizontalDrag = { _, dragAmount ->
-                            swipeOffset += dragAmount
+                            horizontalSwipeOffset += dragAmount
                         }
                     )
                 },
@@ -126,11 +170,12 @@ fun MiniPlayer(
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Album art with thumbnail
+                    // Album art with animated content
                     AnimatedContent(
                         targetState = currentTrack,
                         transitionSpec = {
-                            fadeIn(animationSpec = tween(200)).togetherWith(fadeOut(animationSpec = tween(200)))
+                            fadeIn(animationSpec = tween(200))
+                                .togetherWith(fadeOut(animationSpec = tween(200)))
                         },
                         label = "mini_player_art"
                     ) { track ->
@@ -163,15 +208,32 @@ fun MiniPlayer(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Track info with animated content and marquee
+                    // Track info with directional animation
                     AnimatedContent(
-                        targetState = currentTrack,
+                        targetState = Pair(currentTrack, trackChangeKey),
                         transitionSpec = {
-                            (slideInVertically { -it } + fadeIn()).togetherWith(slideOutVertically { it } + fadeOut())
+                            // Determine slide direction based on last swipe
+                            val slideDirection = when (lastSwipeDirection) {
+                                SwipeDirection.RIGHT -> {
+                                    // Previous song: text slides from left
+                                    slideInHorizontally { -it } + fadeIn() togetherWith
+                                        slideOutHorizontally { it } + fadeOut()
+                                }
+                                SwipeDirection.LEFT -> {
+                                    // Next song: text slides from right
+                                    slideInHorizontally { it } + fadeIn() togetherWith
+                                        slideOutHorizontally { -it } + fadeOut()
+                                }
+                                SwipeDirection.NONE -> {
+                                    // Default: simple fade
+                                    fadeIn() togetherWith fadeOut()
+                                }
+                            }
+                            slideDirection.using(SizeTransform(clip = false))
                         },
                         label = "mini_player_info",
                         modifier = Modifier.weight(1f)
-                    ) { track ->
+                    ) { (track, _) ->
                         Column {
                             Text(
                                 text = track?.name ?: "Unknown",
@@ -202,7 +264,10 @@ fun MiniPlayer(
                     }
 
                     // Next button
-                    IconButton(onClick = { viewModel.skipNext() }) {
+                    IconButton(onClick = { 
+                        lastSwipeDirection = SwipeDirection.LEFT
+                        viewModel.skipNext() 
+                    }) {
                         Icon(
                             Icons.Filled.SkipNext,
                             contentDescription = "Next"
@@ -213,4 +278,3 @@ fun MiniPlayer(
         }
     }
 }
-

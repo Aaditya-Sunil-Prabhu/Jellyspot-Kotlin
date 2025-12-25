@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.jellyspot.data.local.entities.TrackEntity
+import com.jellyspot.ui.components.SongOption
+import com.jellyspot.ui.components.SongOptionsSheet
 import kotlinx.coroutines.delay
 import java.util.Calendar
 
@@ -66,6 +69,10 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    
+    // Song options bottom sheet state
+    var selectedTrackForMenu by remember { mutableStateOf<TrackEntity?>(null) }
+    val sheetState = rememberModalBottomSheetState()
     
     // Typing animation for greeting
     var displayedGreeting by remember { mutableStateOf("") }
@@ -175,12 +182,26 @@ fun HomeScreen(
                             onTrackClick = { track ->
                                 viewModel.playTrack(track, section.tracks)
                                 onNavigateToPlayer()
-                            }
+                            },
+                            onMenuClick = { track -> selectedTrackForMenu = track }
                         )
                     }
                 }
             }
         }
+    }
+    
+    // Song options bottom sheet
+    selectedTrackForMenu?.let { track ->
+        SongOptionsSheet(
+            track = track,
+            sheetState = sheetState,
+            onDismiss = { selectedTrackForMenu = null },
+            onOptionClick = { option ->
+                // TODO: Implement option actions
+                selectedTrackForMenu = null
+            }
+        )
     }
 }
 
@@ -348,7 +369,8 @@ private fun ArtistCircle(artist: ArtistItem, onClick: () -> Unit) {
 @Composable
 private fun TrackSection(
     section: HomeSection,
-    onTrackClick: (TrackEntity) -> Unit
+    onTrackClick: (TrackEntity) -> Unit,
+    onMenuClick: (TrackEntity) -> Unit = {}
 ) {
     Column(modifier = Modifier.padding(vertical = 12.dp)) {
         Text(
@@ -358,8 +380,24 @@ private fun TrackSection(
         )
         
         when (section.type) {
+            SectionType.QUICK_PICKS -> {
+                // Vertical list with thumbnail | title+artist | next preview | menu
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    section.tracks.forEachIndexed { index, track ->
+                        val nextTrack = section.tracks.getOrNull(index + 1)
+                        QuickPicksListItem(
+                            track = track,
+                            nextTrack = nextTrack,
+                            onClick = { onTrackClick(track) },
+                            onMenuClick = { onMenuClick(track) }
+                        )
+                    }
+                }
+            }
             SectionType.HORIZONTAL -> {
-                // Quick Picks style: 4 visible at once
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -393,6 +431,99 @@ private fun TrackSection(
                 }
             }
             else -> {} // ARTISTS handled separately
+        }
+    }
+}
+
+/**
+ * Quick Picks list item with thumbnail, title+artist, next preview, and menu.
+ */
+@Composable
+private fun QuickPicksListItem(
+    track: TrackEntity,
+    nextTrack: TrackEntity?,
+    onClick: () -> Unit,
+    onMenuClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Main thumbnail
+        Surface(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            color = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            if (track.imageUrl != null) {
+                AsyncImage(
+                    model = track.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(Icons.Default.MusicNote, contentDescription = null)
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Title and artist
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = track.name,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.artist,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        // Next track preview (small thumbnail)
+        if (nextTrack != null) {
+            Surface(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ) {
+                if (nextTrack.imageUrl != null) {
+                    AsyncImage(
+                        model = nextTrack.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+        
+        // 3-dot menu
+        IconButton(onClick = onMenuClick) {
+            Icon(
+                Icons.Default.MoreVert,
+                contentDescription = "More options",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

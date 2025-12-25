@@ -36,7 +36,8 @@ enum class SectionType {
     HORIZONTAL,  // Scrollable row of track cards
     GRID,        // 2-row grid of track cards
     LARGE,       // Large cards with play button
-    ARTISTS      // Circle avatars for artists
+    ARTISTS,     // Circle avatars for artists
+    QUICK_PICKS  // Vertical list with thumbnail | title+artist | next preview
 }
 
 /**
@@ -145,7 +146,7 @@ class HomeViewModel @Inject constructor(
                         sections.add(HomeSection(
                             title = "Quick Picks",
                             tracks = quickPicks,
-                            type = SectionType.GRID
+                            type = SectionType.QUICK_PICKS
                         ))
                     }
                     
