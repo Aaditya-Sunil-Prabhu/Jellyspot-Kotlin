@@ -3,14 +3,16 @@
     <!-- Splash screen theme -->
     <style name="Theme.Jellyspot.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="postSplashScreenTheme">@style/Theme.Jellyspot</item>
     </style>
 
-    <!-- Main app theme -->
-    <style name="Theme.Jellyspot" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- Main app theme - using AppCompat which is always available -->
+    <style name="Theme.Jellyspot" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorAccent">@color/accent</item>
     </style>
 </resources>
