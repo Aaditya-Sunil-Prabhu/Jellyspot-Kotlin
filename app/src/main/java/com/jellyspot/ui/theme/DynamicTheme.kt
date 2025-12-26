@@ -1,12 +1,20 @@
 package com.jellyspot.ui.theme
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
+import coil3.ImageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.allowHardware
+import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -43,6 +51,35 @@ object DynamicTheme {
     }
     
     /**
+     * Load image and extract color using Coil3.
+     */
+    suspend fun extractColorFromUrl(
+        context: Context,
+        imageUrl: String?
+    ): Color = withContext(Dispatchers.IO) {
+        if (imageUrl == null) return@withContext defaultDarkColor
+        
+        try {
+            val request = ImageRequest.Builder(context)
+                .data(imageUrl)
+                .allowHardware(false) // Required for Palette
+                .build()
+            
+            val imageLoader = ImageLoader(context)
+            val result = imageLoader.execute(request)
+            
+            if (result is SuccessResult) {
+                val bitmap = result.image.toBitmap()
+                extractDominantColor(bitmap)
+            } else {
+                defaultDarkColor
+            }
+        } catch (e: Exception) {
+            defaultDarkColor
+        }
+    }
+    
+    /**
      * Darken a color for use as background.
      */
     fun darkenColor(color: Color, factor: Float = 0.3f): Color {
@@ -51,24 +88,6 @@ object DynamicTheme {
         val g = ((argb shr 8) and 0xFF) * factor
         val b = (argb and 0xFF) * factor
         return Color(r.toInt(), g.toInt(), b.toInt())
-    }
-}
-
-/**
- * Composable state for dynamic theme colors.
- */
-@Composable
-fun rememberDynamicThemeState(): DynamicThemeState {
-    return remember { DynamicThemeState() }
-}
-
-@Stable
-class DynamicThemeState {
-    var dominantColor by mutableStateOf(DynamicTheme.defaultDarkColor)
-        private set
-    
-    fun updateColor(color: Color) {
-        dominantColor = color
     }
 }
 
@@ -83,6 +102,21 @@ fun animateDynamicColor(targetColor: Color): Color {
         label = "dynamic_color"
     )
     return animatedColor
+}
+
+/**
+ * Composable state for dynamic theme colors extracted from image URL.
+ */
+@Composable
+fun rememberDynamicColorFromUrl(imageUrl: String?): Color {
+    val context = LocalContext.current
+    var dominantColor by remember(imageUrl) { mutableStateOf(DynamicTheme.defaultDarkColor) }
+    
+    LaunchedEffect(imageUrl) {
+        dominantColor = DynamicTheme.extractColorFromUrl(context, imageUrl)
+    }
+    
+    return animateDynamicColor(dominantColor)
 }
 
 /**

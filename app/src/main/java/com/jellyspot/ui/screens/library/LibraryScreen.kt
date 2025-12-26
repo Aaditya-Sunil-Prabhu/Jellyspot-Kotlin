@@ -28,6 +28,8 @@ import androidx.core.content.PermissionChecker
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.jellyspot.data.local.entities.TrackEntity
+import com.jellyspot.ui.components.SongOption
+import com.jellyspot.ui.components.SongOptionsSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +43,10 @@ fun LibraryScreen(
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var hasPermission by remember { mutableStateOf(false) }
+    
+    // Song options sheet state
+    var selectedTrackForMenu by remember { mutableStateOf<TrackEntity?>(null) }
+    val sheetState = rememberModalBottomSheetState()
     
     // Determine which permission to request based on Android version
     val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -160,11 +166,12 @@ fun LibraryScreen(
                     LibraryTab.SONGS -> TracksList(
                         tracks = uiState.tracks,
                         onTrackClick = { track ->
+                            // Just play track - mini player shows automatically
                             viewModel.playTrack(track)
-                            onNavigateToPlayer()
                         },
                         onFavoriteClick = { viewModel.toggleFavorite(it.id) },
-                        isFavorite = { track -> uiState.favoriteTracks.any { it.id == track.id } }
+                        isFavorite = { track -> uiState.favoriteTracks.any { it.id == track.id } },
+                        onMenuClick = { selectedTrackForMenu = it }
                     )
                     
                     LibraryTab.ALBUMS -> AlbumsList(uiState.tracks, onNavigateToDetail)
@@ -188,6 +195,19 @@ fun LibraryScreen(
             onCreate = { name ->
                 viewModel.createPlaylist(name)
                 showCreatePlaylistDialog = false
+            }
+        )
+    }
+    
+    // Song options bottom sheet
+    selectedTrackForMenu?.let { track ->
+        SongOptionsSheet(
+            track = track,
+            sheetState = sheetState,
+            onDismiss = { selectedTrackForMenu = null },
+            onOptionClick = { option ->
+                // TODO: Implement option actions
+                selectedTrackForMenu = null
             }
         )
     }
@@ -235,7 +255,8 @@ private fun TracksList(
     tracks: List<TrackEntity>,
     onTrackClick: (TrackEntity) -> Unit,
     onFavoriteClick: (TrackEntity) -> Unit,
-    isFavorite: (TrackEntity) -> Boolean
+    isFavorite: (TrackEntity) -> Boolean,
+    onMenuClick: (TrackEntity) -> Unit = {}
 ) {
     if (tracks.isEmpty()) {
         EmptyState(
@@ -252,7 +273,8 @@ private fun TracksList(
                     track = track,
                     onClick = { onTrackClick(track) },
                     onFavoriteClick = { onFavoriteClick(track) },
-                    isFavorite = isFavorite(track)
+                    isFavorite = isFavorite(track),
+                    onMenuClick = { onMenuClick(track) }
                 )
             }
         }
@@ -264,7 +286,8 @@ private fun TrackItem(
     track: TrackEntity,
     onClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    isFavorite: Boolean
+    isFavorite: Boolean,
+    onMenuClick: () -> Unit = {}
 ) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
@@ -304,12 +327,21 @@ private fun TrackItem(
             }
         },
         trailingContent = {
-            IconButton(onClick = onFavoriteClick) {
-                Icon(
-                    if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = "Favorite",
-                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Row {
+                IconButton(onClick = onFavoriteClick) {
+                    Icon(
+                        if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = "Favorite",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onMenuClick) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "More options",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     )

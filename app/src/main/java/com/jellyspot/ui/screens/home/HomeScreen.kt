@@ -123,15 +123,18 @@ fun HomeScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                             )
-                            AnimatedVisibility(
-                                visible = displayedGreeting == fullGreeting,
-                                enter = fadeIn() + slideInVertically { it }
-                            ) {
-                                Text(
-                                    text = quirkySubtitle,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            // Reserve space for subtitle to prevent layout shift
+                            Box(modifier = Modifier.height(24.dp)) {
+                                AnimatedVisibility(
+                                    visible = displayedGreeting == fullGreeting,
+                                    enter = fadeIn()
+                                ) {
+                                    Text(
+                                        text = quirkySubtitle,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                         
@@ -180,8 +183,8 @@ fun HomeScreen(
                         else -> TrackSection(
                             section = section,
                             onTrackClick = { track ->
+                                // Just play the track - mini player will show automatically
                                 viewModel.playTrack(track, section.tracks)
-                                onNavigateToPlayer()
                             },
                             onMenuClick = { track -> selectedTrackForMenu = track }
                         )
@@ -381,12 +384,12 @@ private fun TrackSection(
         
         when (section.type) {
             SectionType.QUICK_PICKS -> {
-                // Vertical list with thumbnail | title+artist | next preview | menu
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                // Horizontal scrollable list (4 items visible)
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    section.tracks.forEachIndexed { index, track ->
+                    itemsIndexed(section.tracks) { index, track ->
                         val nextTrack = section.tracks.getOrNull(index + 1)
                         QuickPicksListItem(
                             track = track,
@@ -437,6 +440,7 @@ private fun TrackSection(
 
 /**
  * Quick Picks list item with thumbnail, title+artist, next preview, and menu.
+ * Fixed width for horizontal scrolling (shows ~4 items at a time).
  */
 @Composable
 private fun QuickPicksListItem(
@@ -445,85 +449,92 @@ private fun QuickPicksListItem(
     onClick: () -> Unit,
     onMenuClick: () -> Unit
 ) {
-    Row(
+    Surface(
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .width(280.dp) // Fixed width for horizontal scroll
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     ) {
-        // Main thumbnail
-        Surface(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(8.dp)),
-            color = MaterialTheme.colorScheme.surfaceVariant
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (track.imageUrl != null) {
-                AsyncImage(
-                    model = track.imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Icon(Icons.Default.MusicNote, contentDescription = null)
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        // Title and artist
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = track.name,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = track.artist,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        // Next track preview (small thumbnail)
-        if (nextTrack != null) {
+            // Main thumbnail
             Surface(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(6.dp)),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                color = MaterialTheme.colorScheme.surfaceVariant
             ) {
-                if (nextTrack.imageUrl != null) {
+                if (track.imageUrl != null) {
                     AsyncImage(
-                        model = nextTrack.imageUrl,
+                        model = track.imageUrl,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 } else {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.MusicNote, contentDescription = null)
                     }
                 }
             }
-        }
-        
-        // 3-dot menu
-        IconButton(onClick = onMenuClick) {
-            Icon(
-                Icons.Default.MoreVert,
-                contentDescription = "More options",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Title and artist
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = track.name,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = track.artist,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            
+            // Next track preview (small thumbnail on right)
+            if (nextTrack != null) {
+                Surface(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ) {
+                    if (nextTrack.imageUrl != null) {
+                        AsyncImage(
+                            model = nextTrack.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(12.dp))
+                        }
+                    }
+                }
+            }
+            
+            // 3-dot menu
+            IconButton(
+                onClick = onMenuClick,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.MoreVert,
+                    contentDescription = "More options",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }

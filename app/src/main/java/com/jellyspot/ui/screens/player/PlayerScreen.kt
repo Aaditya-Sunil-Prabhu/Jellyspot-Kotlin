@@ -42,7 +42,7 @@ import com.jellyspot.ui.components.LyricsSection
 import com.jellyspot.ui.components.SongOption
 import com.jellyspot.ui.components.SongOptionsSheet
 import com.jellyspot.ui.theme.DynamicTheme
-import com.jellyspot.ui.theme.animateDynamicColor
+import com.jellyspot.ui.theme.rememberDynamicColorFromUrl
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,36 +60,8 @@ fun PlayerScreen(
     var showOptionsSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
     
-    // Dynamic theme color extraction
-    var dominantColor by remember { mutableStateOf(DynamicTheme.defaultDarkColor) }
-    val animatedColor = animateDynamicColor(dominantColor)
-    
-    // Load image and extract color
-    val painter = rememberAsyncImagePainter(
-        model = ImageRequest.Builder(context)
-            .data(track?.imageUrl)
-            .allowHardware(false) // Need software bitmap for Palette
-            .build()
-    )
-    
-    LaunchedEffect(painter.state) {
-        if (painter.state is AsyncImagePainter.State.Success) {
-            val drawable = (painter.state as AsyncImagePainter.State.Success).result.image
-            // Extract bitmap and get dominant color
-            scope.launch {
-                try {
-                    val bitmap = (drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
-                        ?: (drawable as? coil3.Image)?.let { 
-                            // Coil3 uses different image type
-                            null // Will fall back to default
-                        }
-                    dominantColor = DynamicTheme.extractDominantColor(bitmap)
-                } catch (e: Exception) {
-                    dominantColor = DynamicTheme.defaultDarkColor
-                }
-            }
-        }
-    }
+    // Dynamic theme color from album art
+    val animatedColor = rememberDynamicColorFromUrl(track?.imageUrl)
     
     // Gradient background with dynamic color
     Box(
