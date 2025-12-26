@@ -1,10 +1,12 @@
 package com.jellyspot.ui.screens.home
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -124,18 +126,20 @@ fun HomeScreen(
                                 )
                             )
                             // Reserve space for subtitle to prevent layout shift
-                            Box(modifier = Modifier.height(24.dp)) {
-                                AnimatedVisibility(
-                                    visible = displayedGreeting == fullGreeting,
-                                    enter = fadeIn()
-                                ) {
-                                    Text(
-                                        text = quirkySubtitle,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
+                            // Use alpha-based visibility to avoid ColumnScope AnimatedVisibility issue
+                            val subtitleAlpha by animateFloatAsState(
+                                targetValue = if (displayedGreeting == fullGreeting) 1f else 0f,
+                                animationSpec = tween(300),
+                                label = "subtitle_alpha"
+                            )
+                            Text(
+                                text = quirkySubtitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .height(24.dp)
+                                    .alpha(subtitleAlpha)
+                            )
                         }
                         
                         SourceToggleChip(
