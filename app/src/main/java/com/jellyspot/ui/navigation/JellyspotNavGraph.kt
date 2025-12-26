@@ -1,20 +1,35 @@
 package com.jellyspot.ui.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -79,12 +94,54 @@ fun JellyspotNavGraph(
         Routes.DOWNLOADS
     )
 
+    // Persistent Player State
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val screenHeightPx = with(density) { screenHeight.toPx() }
+    
+    val animatedPlayerOffset = remember { Animatable(screenHeightPx) }
+    val scope = rememberCoroutineScope()
+    
+    // Drag Logic
+    fun onDrag(delta: Float) {
+        scope.launch {
+            val newOffset = (animatedPlayerOffset.value + delta).coerceIn(0f, screenHeightPx)
+            animatedPlayerOffset.snapTo(newOffset)
+        }
+    }
+
+    fun onDragEnd() {
+        val current = animatedPlayerOffset.value
+        val target = if (current < screenHeightPx * 0.7f) 0f else screenHeightPx
+        scope.launch {
+            animatedPlayerOffset.animateTo(
+                targetValue = target,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            )
+        }
+    }
+    
+    // MiniPlayer Crossfade Alpha
+    val miniPlayerAlpha by remember {
+        derivedStateOf {
+            (animatedPlayerOffset.value / screenHeightPx).coerceIn(0f, 1f)
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Main content with Scaffold
         Scaffold(
             bottomBar = {
                 if (showBottomBar) {
                     Column {
+                        // MiniPlayer (Fade out as overlay slides up)
+                        MiniPlayer(
+                            modifier = Modifier.alpha(miniPlayerAlpha),
+                            onExpandPlayer = { scope.launch { animatedPlayerOffset.animateTo(0f) } },
+                            onVerticalDrag = { delta -> onDrag(delta) },
+                            onDragEnd = { onDragEnd() }
+                        )
                         // Bottom navigation only
                         BottomNavBar(
                             currentRoute = currentRoute ?: Routes.HOME,
@@ -150,7 +207,7 @@ fun JellyspotNavGraph(
                             navController.navigate(Routes.detail(type, id))
                         },
                         onNavigateToPlayer = {
-                            navController.navigate(Routes.PLAYER)
+                            scope.launch { animatedPlayerOffset.animateTo(0f) }
                         }
                     )
                 }
@@ -162,7 +219,7 @@ fun JellyspotNavGraph(
                             navController.navigate(Routes.detail(type, id))
                         },
                         onNavigateToPlayer = {
-                            navController.navigate(Routes.PLAYER)
+                            scope.launch { animatedPlayerOffset.animateTo(0f) }
                         }
                     )
                 }
@@ -174,7 +231,7 @@ fun JellyspotNavGraph(
                             navController.navigate(Routes.detail(type, id))
                         },
                         onNavigateToPlayer = {
-                            navController.navigate(Routes.PLAYER)
+                            scope.launch { animatedPlayerOffset.animateTo(0f) }
                         }
                     )
                 }
@@ -196,26 +253,7 @@ fun JellyspotNavGraph(
                     )
                 }
 
-                // Full-screen Player
-                composable(
-                    Routes.PLAYER,
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = tween(300)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = tween(300)
-                        )
-                    }
-                ) {
-                    PlayerScreen(
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                // Full-screen Player removed from NavHost (handled by Overlay)
 
                 // Detail (Album/Artist/Playlist)
                 composable(
@@ -232,15 +270,24 @@ fun JellyspotNavGraph(
             }
         }
         
-        // Floating MiniPlayer overlay - positioned above bottom nav
-        if (showBottomBar) {
-            MiniPlayer(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 88.dp) // Height of bottom nav + extra gap
-                    .navigationBarsPadding(),
-                onExpandPlayer = { navController.navigate(Routes.PLAYER) }
-            )
-        }
+        // Persistent Player Overlay
+        // Always composed to maintain state (e.g. scroll position matches lyrics)
+        // Moved off-screen when collapsed
+        PlayerScreen(
+            modifier = Modifier
+                .offset { IntOffset(0, animatedPlayerOffset.value.roundToInt()) }
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = { onDragEnd() },
+                        onVerticalDrag = { _, dragAmount -> onDrag(dragAmount) }
+                    )
+                },
+            onDismiss = { 
+                scope.launch { 
+                    animatedPlayerOffset.animateTo(screenHeightPx) 
+                } 
+            }
+        )
     }
 }

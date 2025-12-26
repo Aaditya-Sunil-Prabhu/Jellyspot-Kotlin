@@ -56,13 +56,13 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(
-    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val track = uiState.currentTrack
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
     
     // Song options sheet state
     var showOptionsSheet by remember { mutableStateOf(false) }
@@ -71,46 +71,17 @@ fun PlayerScreen(
     // Dynamic theme color from album art
     val animatedColor = rememberDynamicColorFromUrl(track?.imageUrl)
     
-    // Drag-down gesture state
-    var dragOffsetY by remember { mutableFloatStateOf(0f) }
-    val animatedDragOffset by animateFloatAsState(
-        targetValue = dragOffsetY,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "player_drag_offset"
-    )
-    // Calculate dismiss progress (0 = resting, 1 = fully dragged)
-    val dismissProgress = (animatedDragOffset / 400f).coerceIn(0f, 1f)
+    // Header transition based on scroll
+    val headerAlpha by remember {
+        derivedStateOf {
+            (scrollState.value.toFloat() / 600f).coerceIn(0f, 1f)
+        }
+    }
     
-    // Gradient background with dynamic color and drag gesture
+    // Gradient background with dynamic color
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .offset { IntOffset(0, animatedDragOffset.roundToInt()) }
-            .graphicsLayer {
-                // Scale down as dragging
-                val scale = 1f - (dismissProgress * 0.15f)
-                scaleX = scale
-                scaleY = scale
-                // Fade out as dragging
-                alpha = 1f - (dismissProgress * 0.5f)
-            }
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onDragEnd = {
-                        if (dragOffsetY > 200f) {
-                            // Dragged down enough - dismiss
-                            onNavigateBack()
-                        }
-                        dragOffsetY = 0f
-                    },
-                    onVerticalDrag = { _, dragAmount ->
-                        // Only allow downward drag
-                        if (dragOffsetY + dragAmount >= 0) {
-                            dragOffsetY += dragAmount
-                        }
-                    }
-                )
-            }
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
@@ -124,28 +95,57 @@ fun PlayerScreen(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
+            topBar = {
                 TopAppBar(
                     title = { 
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                "NOW PLAYING",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.7f)
-                            )
-                            Text(
-                                "\"${track?.album ?: "Unknown"}\" Radio",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                        Box(contentAlignment = Alignment.Center) {
+                            // Initial State: NOW PLAYING
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .alpha(1f - headerAlpha)
+                            ) {
+                                Text(
+                                    "NOW PLAYING",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                    "\"${track?.album ?: "Unknown"}\" Radio",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            
+                            // Scrolled State: Song Title - Artist
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .alpha(headerAlpha)
+                            ) {
+                                Text(
+                                    track?.name ?: "Unknown",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    track?.artist ?: "Unknown Artist",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
+                        IconButton(onClick = onDismiss) {
                             Icon(
                                 Icons.Default.KeyboardArrowDown, 
                                 contentDescription = "Minimize",
@@ -180,7 +180,7 @@ fun PlayerScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(scrollState)
                 ) {
                     // Main player content
                     Column(
@@ -413,6 +413,7 @@ fun PlayerScreen(
                     // Lyrics Section
                     LyricsSection(
                         modifier = Modifier.padding(horizontal = 16.dp),
+                        backgroundColor = animatedColor,
                         onShowClick = { viewModel.toggleLyrics() }
                     )
                     

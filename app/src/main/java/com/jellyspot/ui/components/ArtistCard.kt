@@ -16,10 +16,11 @@ import coil3.compose.AsyncImage
  * Artist card component for player screen.
  */
 @Composable
+@Composable
 fun ArtistCard(
     artistName: String,
     artistImageUrl: String? = null,
-    subscriberCount: String = "Music Fibers",
+    subscriberCount: String = "1.11M subscribers", // Placeholder
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {}
 ) {
@@ -28,58 +29,69 @@ fun ArtistCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = androidx.compose.ui.graphics.Color.Transparent // Let background show through
         )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Header
             Text(
                 text = "Artists",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp)
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = androidx.compose.ui.graphics.Color.White,
+                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
             )
             
-            // Artist image
+            // Artist image with overlay
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
-                    .padding(16.dp)
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(12.dp))
             ) {
                 if (artistImageUrl != null) {
                     AsyncImage(
                         model = artistImageUrl,
                         contentDescription = "Artist image",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(12.dp)),
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    // Placeholder gradient
                     Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(12.dp)),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {}
                 }
+                
+                // Gradient overlay for text readability
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .androidx.compose.foundation.background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(androidx.compose.ui.graphics.Color.Transparent, androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.8f)),
+                                startY = 100f
+                            )
+                        )
+                )
+
+                // Text Overlay
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = artistName,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        color = androidx.compose.ui.graphics.Color.White
+                    )
+                    Text(
+                        text = subscriberCount,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f)
+                    )
+                }
             }
-            
-            // Artist name and subscriber count
-            Text(
-                text = artistName,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            Text(
-                text = subscriberCount,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            )
         }
     }
 }

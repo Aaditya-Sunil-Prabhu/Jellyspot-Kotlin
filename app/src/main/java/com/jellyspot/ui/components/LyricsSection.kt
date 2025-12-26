@@ -17,13 +17,14 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun LyricsSection(
     modifier: Modifier = Modifier,
+    backgroundColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceVariant,
     onShowClick: () -> Unit = {}
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = backgroundColor.copy(alpha = 0.6f) // Glassy look
         )
     ) {
         Column(

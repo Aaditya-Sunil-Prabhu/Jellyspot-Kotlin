@@ -388,19 +388,31 @@ private fun TrackSection(
         
         when (section.type) {
             SectionType.QUICK_PICKS -> {
-                // Horizontal scrollable list (4 items visible)
+                // Horizontal scrollable pages (columns of 4 items)
+                // Use chunked(4) to split into pages
+                val pages = section.tracks.chunked(4)
+                
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    itemsIndexed(section.tracks) { index, track ->
-                        val nextTrack = section.tracks.getOrNull(index + 1)
-                        QuickPicksListItem(
-                            track = track,
-                            nextTrack = nextTrack,
-                            onClick = { onTrackClick(track) },
-                            onMenuClick = { onMenuClick(track) }
-                        )
+                    items(pages) { pageTracks ->
+                        // Each page is a column of up to 4 tracks
+                        // Width set to 90% of screen to show a peek of the next column
+                        Column(
+                            modifier = Modifier
+                                .fillParentMaxWidth(0.9f)
+                                .padding(vertical = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            pageTracks.forEach { track ->
+                                QuickPicksListItem(
+                                    track = track,
+                                    onClick = { onTrackClick(track) },
+                                    onMenuClick = { onMenuClick(track) }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -449,13 +461,12 @@ private fun TrackSection(
 @Composable
 private fun QuickPicksListItem(
     track: TrackEntity,
-    nextTrack: TrackEntity?,
     onClick: () -> Unit,
     onMenuClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
-            .width(280.dp) // Fixed width for horizontal scroll
+            .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -504,29 +515,7 @@ private fun QuickPicksListItem(
                 )
             }
             
-            // Next track preview (small thumbnail on right)
-            if (nextTrack != null) {
-                Surface(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ) {
-                    if (nextTrack.imageUrl != null) {
-                        AsyncImage(
-                            model = nextTrack.imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(12.dp))
-                        }
-                    }
-                }
-            }
-            
+            // 3-dot menu
             // 3-dot menu
             IconButton(
                 onClick = onMenuClick,

@@ -59,6 +59,8 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
     onExpandPlayer: () -> Unit,
     onDismiss: () -> Unit = {},
+    onVerticalDrag: (Float) -> Unit = {},
+    onDragEnd: () -> Unit = {},
     viewModel: MiniPlayerViewModel = hiltViewModel()
 ) {
     val currentTrack by viewModel.currentTrack.collectAsState()
@@ -67,22 +69,11 @@ fun MiniPlayer(
     val durationMs by viewModel.durationMs.collectAsState()
     
     // Drag offset for vertical drag gesture
-    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    // Drag offset for horizontal swipe gesture only
     var horizontalDragOffset by remember { mutableFloatStateOf(0f) }
     
-    // Animate offset back to 0 when released
-    val animatedOffsetY by animateFloatAsState(
-        targetValue = dragOffsetY,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "drag_offset_y"
-    )
-    
-    // Calculate progress (0 = resting, 1 = fully dragged up)
-    val expandProgress = (-animatedOffsetY / 300f).coerceIn(0f, 1f)
-    val dismissProgress = (animatedOffsetY / 150f).coerceIn(0f, 1f)
-    
-    // Hide if fully dismissed
-    val isVisible = currentTrack != null && dismissProgress < 1f
+    // Hide if no track
+    val isVisible = currentTrack != null
 
     AnimatedVisibility(
         visible = isVisible,
@@ -94,44 +85,24 @@ fun MiniPlayer(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp)
-                .offset { IntOffset(0, animatedOffsetY.roundToInt()) }
-                .graphicsLayer {
-                    // Scale down as dragging up
-                    val scale = 1f - (expandProgress * 0.1f)
-                    scaleX = scale
-                    scaleY = scale
-                    // Fade as dragging down
-                    alpha = 1f - dismissProgress
-                }
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = {
                             when {
-                                // Dragged up far enough - expand
-                                dragOffsetY < -100f -> {
-                                    onExpandPlayer()
-                                    dragOffsetY = 0f
-                                }
-                                // Dragged down far enough - dismiss
-                                dragOffsetY > 80f -> {
-                                    onDismiss()
-                                    dragOffsetY = 0f
-                                }
                                 // Horizontal swipe thresholds
                                 horizontalDragOffset > 100f -> {
                                     viewModel.skipPrevious()
                                     horizontalDragOffset = 0f
-                                    dragOffsetY = 0f
                                 }
                                 horizontalDragOffset < -100f -> {
                                     viewModel.skipNext()
                                     horizontalDragOffset = 0f
-                                    dragOffsetY = 0f
                                 }
                                 else -> {
-                                    // Spring back
-                                    dragOffsetY = 0f
+                                    // Spring back horizontal
                                     horizontalDragOffset = 0f
+                                    // Notify parent drag ended
+                                    onDragEnd()
                                 }
                             }
                         },
@@ -139,7 +110,7 @@ fun MiniPlayer(
                             change.consume()
                             // Prioritize vertical if more vertical drag
                             if (abs(dragAmount.y) > abs(dragAmount.x) * 0.5f) {
-                                dragOffsetY += dragAmount.y
+                                onVerticalDrag(dragAmount.y)
                             } else {
                                 horizontalDragOffset += dragAmount.x
                             }
