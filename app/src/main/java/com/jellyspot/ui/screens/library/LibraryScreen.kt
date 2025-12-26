@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,15 +31,22 @@ import coil3.compose.AsyncImage
 import com.jellyspot.data.local.entities.TrackEntity
 import com.jellyspot.ui.components.SongOption
 import com.jellyspot.ui.components.SongOptionsSheet
+import com.jellyspot.ui.components.EqualizerIndicator
+import com.jellyspot.ui.screens.player.PlayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     onNavigateToDetail: (String, String) -> Unit,
     onNavigateToPlayer: () -> Unit,
-    viewModel: LibraryViewModel = hiltViewModel()
+    viewModel: LibraryViewModel = hiltViewModel(),
+    playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val playerUiState by playerViewModel.uiState.collectAsState()
+    val currentTrack = playerUiState.currentTrack
+    val isPlaying = playerUiState.isPlaying
+    
     val context = LocalContext.current
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -165,6 +173,8 @@ fun LibraryScreen(
                 when (uiState.selectedTab) {
                     LibraryTab.SONGS -> TracksList(
                         tracks = uiState.tracks,
+                        currentTrackId = currentTrack?.id,
+                        isPlaying = isPlaying,
                         onTrackClick = { track ->
                             // Just play track - mini player shows automatically
                             viewModel.playTrack(track)
@@ -253,6 +263,8 @@ private fun PermissionDeniedState(onRequestPermission: () -> Unit) {
 @Composable
 private fun TracksList(
     tracks: List<TrackEntity>,
+    currentTrackId: Long?,
+    isPlaying: Boolean,
     onTrackClick: (TrackEntity) -> Unit,
     onFavoriteClick: (TrackEntity) -> Unit,
     isFavorite: (TrackEntity) -> Boolean,
@@ -271,6 +283,8 @@ private fun TracksList(
             items(tracks, key = { it.id }) { track ->
                 TrackItem(
                     track = track,
+                    isCurrentTrack = track.id == currentTrackId,
+                    isPlaying = isPlaying,
                     onClick = { onTrackClick(track) },
                     onFavoriteClick = { onFavoriteClick(track) },
                     isFavorite = isFavorite(track),
@@ -284,15 +298,24 @@ private fun TracksList(
 @Composable
 private fun TrackItem(
     track: TrackEntity,
+    isCurrentTrack: Boolean,
+    isPlaying: Boolean,
     onClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     isFavorite: Boolean,
     onMenuClick: () -> Unit = {}
 ) {
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .then(if (isCurrentTrack) Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)) else Modifier),
         headlineContent = {
-            Text(track.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                track.name, 
+                maxLines = 1, 
+                overflow = TextOverflow.Ellipsis,
+                color = if (isCurrentTrack) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
         },
         supportingContent = {
             Text(
@@ -322,6 +345,22 @@ private fun TrackItem(
                             modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
                             contentScale = ContentScale.Crop
                         )
+                    }
+                    
+                    // Equalizer Overlay for current track
+                    if (isCurrentTrack) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            EqualizerIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                isAnimating = isPlaying
+                            )
+                        }
                     }
                 }
             }

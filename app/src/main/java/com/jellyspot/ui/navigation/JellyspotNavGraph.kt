@@ -115,13 +115,15 @@ fun JellyspotNavGraph(
     fun onDragEnd() {
         val current = animatedPlayerOffset.value
         // User feedback: "drag down by just half it should automatically close"
-        // Making it easier: if dragged down > 30% of screen, close it.
+        // Making it easier: if dragged down > 20% of screen, close it.
         // Current is offset from top (0 = Expanded, H = Collapsed).
-        // If we overlap 30%, it means we are at 0.3 * H.
-        // So threshold to close is (current > 0.3 * H).
-        // Conversely, to open (snap to 0), we want current < 0.3 * H.
-        val threshold = screenHeightPx * 0.3f
-        val target = if (current < threshold) 0f else screenHeightPx
+        // If we overlap 20% (from top or bottom), we trigger the snap.
+        // To CLOSE: if current > 0.2 * H
+        // To OPEN: if current < 0.8 * H (dragged up 20% from bottom)
+        val threshold = screenHeightPx * 0.2f
+        val openThreshold = screenHeightPx * 0.8f
+        
+        val target = if (current < openThreshold) 0f else screenHeightPx
         scope.launch {
             animatedPlayerOffset.animateTo(
                 targetValue = target,
@@ -173,30 +175,12 @@ fun JellyspotNavGraph(
                     .fillMaxSize()
                     .padding(paddingValues),
                 // Subtle horizontal slide animations for tab navigation
-                enterTransition = {
-                    slideIntoContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(200)
-                    ) + fadeIn(animationSpec = tween(200))
-                },
-                exitTransition = {
-                    slideOutOfContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(200)
-                    ) + fadeOut(animationSpec = tween(200))
-                },
-                popEnterTransition = {
-                    slideIntoContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                        animationSpec = tween(200)
-                    ) + fadeIn(animationSpec = tween(200))
-                },
-                popExitTransition = {
-                    slideOutOfContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                        animationSpec = tween(200)
-                    ) + fadeOut(animationSpec = tween(200))
-                }
+                // Simple fade transitions for better performance
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { fadeOut(animationSpec = tween(300)) }
+
             ) {
                 // Onboarding
                 composable(Routes.ONBOARDING) {
@@ -284,8 +268,8 @@ fun JellyspotNavGraph(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    // Gap above BottomNavBar (approx 80dp for navbar + 16dp gap)
-                    .padding(bottom = 96.dp) 
+                    // Gap above BottomNavBar (approx 80dp for navbar + 24dp gap)
+                    .padding(bottom = 104.dp) 
                     .graphicsLayer {
                         alpha = miniPlayerAlpha
                         translationY = miniPlayerTranslationY
@@ -316,7 +300,8 @@ fun JellyspotNavGraph(
                 scope.launch { 
                     animatedPlayerOffset.animateTo(screenHeightPx) 
                 } 
-            }
+            },
+            onDrag = { delta -> onDrag(delta) } // Handle drag from nested scroll
         )
     }
 }

@@ -12,6 +12,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import kotlin.math.roundToInt
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.*
@@ -48,6 +54,7 @@ import coil3.request.allowHardware
 import com.jellyspot.data.local.entities.TrackEntity
 import com.jellyspot.ui.components.ArtistCard
 import com.jellyspot.ui.components.LyricsSection
+import com.jellyspot.ui.components.EqualizerIndicator
 import com.jellyspot.ui.components.SongOption
 import com.jellyspot.ui.components.SongOptionsSheet
 import com.jellyspot.ui.theme.DynamicTheme
@@ -59,11 +66,36 @@ import kotlinx.coroutines.launch
 fun PlayerScreen(
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit,
+    onDrag: (Float) -> Unit = {},
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val track = uiState.currentTrack
     val scrollState = rememberScrollState()
+    
+    // Back Handler for Queue
+    BackHandler(enabled = uiState.showQueue) {
+        viewModel.toggleQueue()
+    }
+    
+    // Nested Scroll Connection to capture drag-down on content
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                // If scrolling down (available.y > 0) and we are at the top (scrollState.value == 0)
+                // Consume the scroll as a drag to dismiss
+                if (available.y > 0 && scrollState.value == 0) {
+                    onDrag(available.y)
+                    return available // Consume all
+                }
+                return Offset.Zero
+            }
+        }
+    }
     
     // Song options sheet state
     var showOptionsSheet by remember { mutableStateOf(false) }
@@ -120,27 +152,64 @@ fun PlayerScreen(
                                 )
                             }
                             
-                            // Scrolled State: Song Title - Artist
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
+                            // Scrolled State: Song Title - Artist (Row Layout)
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .alpha(headerAlpha)
+                                    .padding(end = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(
-                                    track?.name ?: "Unknown",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = Color.White,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    track?.artist ?: "Unknown Artist",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                // Left: Title and Artist
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        track?.name ?: "Unknown",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        modifier = Modifier.basicMarquee()
+                                    )
+                                    Text(
+                                        track?.artist ?: "Unknown Artist",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White.copy(alpha = 0.7f),
+                                        maxLines = 1,
+                                        modifier = Modifier.basicMarquee()
+                                    )
+                                    // Progress bar at bottom of header
+                                    if (uiState.durationMs > 0) {
+                                        LinearProgressIndicator(
+                                            progress = { (uiState.positionMs.toFloat() / uiState.durationMs).coerceIn(0f, 1f) },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(top = 4.dp)
+                                                .height(2.dp),
+                                            trackColor = Color.White.copy(alpha = 0.3f),
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                                
+                                // Right: Controls
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { viewModel.toggleFavorite() }) {
+                                        Icon(
+                                            if (uiState.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                            contentDescription = "Favorite",
+                                            tint = if (uiState.isFavorite) Color.Red else Color.White
+                                        )
+                                    }
+                                    IconButton(onClick = { viewModel.togglePlayPause() }) {
+                                        Icon(
+                                            if (uiState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                            contentDescription = "Play/Pause",
+                                            tint = Color.White
+                                        )
+                                    }
+                                }
                             }
                         }
                     },
@@ -179,7 +248,9 @@ fun PlayerScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .fillMaxSize()
                         .padding(paddingValues)
+                        .nestedScroll(nestedScrollConnection) // Attach nested scroll
                         .verticalScroll(scrollState)
                 ) {
                     // Main player content
@@ -189,7 +260,7 @@ fun PlayerScreen(
                             .padding(horizontal = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(32.dp)) // Increased spacing
                         
                         // Album Art
                         AnimatedContent(
@@ -244,15 +315,15 @@ fun PlayerScreen(
                                     text = track?.name ?: "No track",
                                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                                     color = Color.White,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
+                                    maxLines = 1,
+                                    modifier = Modifier.basicMarquee()
                                 )
                                 Text(
                                     text = track?.artist ?: "—",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = Color.White.copy(alpha = 0.7f),
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    modifier = Modifier.basicMarquee()
                                 )
                             }
                             
@@ -497,10 +568,10 @@ private fun QueueView(
                 },
                 leadingContent = {
                     if (isCurrentTrack) {
-                        Icon(
-                            Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = Color.White
+                        EqualizerIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.Green,
+                            isAnimating = true // You could pass isPlaying state here if available in QueueView
                         )
                     } else {
                         Text(
