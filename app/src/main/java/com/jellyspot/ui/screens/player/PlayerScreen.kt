@@ -220,8 +220,6 @@ fun PlayerScreen(
                 )
             }
         ) { paddingValues ->
-            }
-        ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 // Main Player Content (Below Queue)
                 Column(

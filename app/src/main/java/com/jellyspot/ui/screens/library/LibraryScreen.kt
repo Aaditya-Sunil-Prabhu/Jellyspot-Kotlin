@@ -135,10 +135,7 @@ fun LibraryScreen(
                 FloatingActionButton(onClick = { showCreatePlaylistDialog = true }) {
                     Icon(Icons.Default.Add, contentDescription = "Create playlist")
                 }
-            }
-        }
-        floatingActionButton = {
-            if (uiState.tracks.isNotEmpty()) {
+            } else if (uiState.tracks.isNotEmpty()) {
                 ExtendedFloatingActionButton(
                     text = { Text("Shuffle") },
                     icon = { Icon(Icons.Default.Shuffle, contentDescription = null) },
