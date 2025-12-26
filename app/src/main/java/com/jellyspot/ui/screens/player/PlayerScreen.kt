@@ -108,12 +108,12 @@ fun PlayerScreen(
                             ) {
                                 Text(
                                     "NOW PLAYING",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.titleMedium,
                                     color = Color.White.copy(alpha = 0.7f)
                                 )
                                 Text(
                                     "\"${track?.album ?: "Unknown"}\" Radio",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = Color.White,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -412,7 +412,9 @@ fun PlayerScreen(
                     
                     // Lyrics Section
                     LyricsSection(
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .heightIn(min = 400.dp),
                         backgroundColor = animatedColor,
                         onShowClick = { viewModel.toggleLyrics() }
                     )

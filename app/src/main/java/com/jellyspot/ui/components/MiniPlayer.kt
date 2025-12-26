@@ -84,7 +84,7 @@ fun MiniPlayer(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .padding(horizontal = 8.dp, vertical = 2.dp) // Reduced padding
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = {
@@ -117,7 +117,7 @@ fun MiniPlayer(
                         }
                     )
                 },
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp), // Slightly smaller radius
             tonalElevation = 8.dp,
             shadowElevation = 8.dp
         ) {
@@ -137,7 +137,7 @@ fun MiniPlayer(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onExpandPlayer() }
-                        .padding(12.dp),
+                        .padding(8.dp), // Reduced internal padding
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Album art (fixed, no animation)

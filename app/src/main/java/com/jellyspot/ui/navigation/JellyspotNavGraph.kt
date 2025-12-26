@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -113,7 +114,14 @@ fun JellyspotNavGraph(
 
     fun onDragEnd() {
         val current = animatedPlayerOffset.value
-        val target = if (current < screenHeightPx * 0.7f) 0f else screenHeightPx
+        // User feedback: "drag down by just half it should automatically close"
+        // Making it easier: if dragged down > 30% of screen, close it.
+        // Current is offset from top (0 = Expanded, H = Collapsed).
+        // If we overlap 30%, it means we are at 0.3 * H.
+        // So threshold to close is (current > 0.3 * H).
+        // Conversely, to open (snap to 0), we want current < 0.3 * H.
+        val threshold = screenHeightPx * 0.3f
+        val target = if (current < threshold) 0f else screenHeightPx
         scope.launch {
             animatedPlayerOffset.animateTo(
                 targetValue = target,
@@ -122,11 +130,22 @@ fun JellyspotNavGraph(
         }
     }
     
-    // MiniPlayer Crossfade Alpha
-    val miniPlayerAlpha by remember {
+    // MiniPlayer Transition (Opacity & Slide)
+    // When progress = 1 (Collapsed): Alpha = 1, TranslationY = 0
+    // When progress = 0 (Expanded): Alpha = 0, TranslationY = -50dp (Slide up)
+    val playerProgress by remember {
         derivedStateOf {
             (animatedPlayerOffset.value / screenHeightPx).coerceIn(0f, 1f)
         }
+    }
+    
+    val miniPlayerAlpha by remember { derivedStateOf { playerProgress } }
+    val miniPlayerTranslationY by remember { 
+        derivedStateOf { 
+            // -100px when complete expanded (hidden), 0px when collapsed (visible)
+            // "make it seem like it is sliding down and fading in"
+            -100f * (1f - playerProgress) 
+        } 
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -134,26 +153,16 @@ fun JellyspotNavGraph(
         Scaffold(
             bottomBar = {
                 if (showBottomBar) {
-                    Column {
-                        // MiniPlayer (Fade out as overlay slides up)
-                        MiniPlayer(
-                            modifier = Modifier.alpha(miniPlayerAlpha),
-                            onExpandPlayer = { scope.launch { animatedPlayerOffset.animateTo(0f) } },
-                            onVerticalDrag = { delta -> onDrag(delta) },
-                            onDragEnd = { onDragEnd() }
-                        )
-                        // Bottom navigation only
-                        BottomNavBar(
-                            currentRoute = currentRoute ?: Routes.HOME,
-                            onNavigate = { route ->
-                                navController.navigate(route) {
-                                    popUpTo(Routes.HOME) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
+                    BottomNavBar(
+                        currentRoute = currentRoute ?: Routes.HOME,
+                        onNavigate = { route ->
+                            navController.navigate(route) {
+                                popUpTo(Routes.HOME) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                        )
-                    }
+                        }
+                    )
                 }
             }
         ) { paddingValues ->
@@ -267,6 +276,26 @@ fun JellyspotNavGraph(
                     val id = backStackEntry.arguments?.getString("id") ?: ""
                     // TODO: DetailScreen
                 }
+            }
+        }
+        
+        // Floating MiniPlayer (Overlay on top of Scaffold content)
+        if (showBottomBar) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    // Gap above BottomNavBar (approx 80dp for navbar + 16dp gap)
+                    .padding(bottom = 96.dp) 
+                    .graphicsLayer {
+                        alpha = miniPlayerAlpha
+                        translationY = miniPlayerTranslationY
+                    }
+            ) {
+                MiniPlayer(
+                    onExpandPlayer = { scope.launch { animatedPlayerOffset.animateTo(0f) } },
+                    onVerticalDrag = { delta -> onDrag(delta) },
+                    onDragEnd = { onDragEnd() }
+                )
             }
         }
         
