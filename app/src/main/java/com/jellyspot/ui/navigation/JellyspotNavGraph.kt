@@ -106,17 +106,30 @@ fun JellyspotNavGraph(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
+                // Subtle horizontal slide animations for tab navigation
                 enterTransition = {
-                    fadeIn(animationSpec = tween(200))
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(200)
+                    ) + fadeIn(animationSpec = tween(200))
                 },
                 exitTransition = {
-                    fadeOut(animationSpec = tween(200))
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(200)
+                    ) + fadeOut(animationSpec = tween(200))
                 },
                 popEnterTransition = {
-                    fadeIn(animationSpec = tween(200))
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(200)
+                    ) + fadeIn(animationSpec = tween(200))
                 },
                 popExitTransition = {
-                    fadeOut(animationSpec = tween(200))
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(200)
+                    ) + fadeOut(animationSpec = tween(200))
                 }
             ) {
                 // Onboarding

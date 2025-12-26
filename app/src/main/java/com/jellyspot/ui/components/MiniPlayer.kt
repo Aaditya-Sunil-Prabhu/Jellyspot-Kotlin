@@ -1,12 +1,10 @@
 package com.jellyspot.ui.components
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,8 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -24,14 +22,14 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import coil3.compose.AsyncImage
 import com.jellyspot.data.local.entities.TrackEntity
 import com.jellyspot.player.PlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Mini player ViewModel for state management.
@@ -51,24 +49,16 @@ class MiniPlayerViewModel @Inject constructor(
 }
 
 /**
- * Swipe direction for animation control.
+ * Mini player component with:
+ * - Physical drag up gesture with visual offset to expand to fullscreen
+ * - Drag down to dismiss (hide mini player)
+ * - Horizontal swipe for prev/next with fast, simple crossfade animation
  */
-private enum class SwipeDirection {
-    NONE, LEFT, RIGHT
-}
-
-/**
- * Mini player component shown at the bottom of main screens.
- * Features:
- * - Swipe left for next song (text slides right to left)
- * - Swipe right for previous song (text slides left to right)
- * - Swipe/drag up to expand to fullscreen player
- */
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun MiniPlayer(
     modifier: Modifier = Modifier,
     onExpandPlayer: () -> Unit,
+    onDismiss: () -> Unit = {},
     viewModel: MiniPlayerViewModel = hiltViewModel()
 ) {
     val currentTrack by viewModel.currentTrack.collectAsState()
@@ -76,74 +66,83 @@ fun MiniPlayer(
     val positionMs by viewModel.positionMs.collectAsState()
     val durationMs by viewModel.durationMs.collectAsState()
     
-    // Swipe tracking for animations
-    var horizontalSwipeOffset by remember { mutableFloatStateOf(0f) }
-    var verticalSwipeOffset by remember { mutableFloatStateOf(0f) }
-    var lastSwipeDirection by remember { mutableStateOf(SwipeDirection.NONE) }
+    // Drag offset for vertical drag gesture
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    var horizontalDragOffset by remember { mutableFloatStateOf(0f) }
     
-    // Track change counter to trigger animation
-    var trackChangeKey by remember { mutableIntStateOf(0) }
+    // Animate offset back to 0 when released
+    val animatedOffsetY by animateFloatAsState(
+        targetValue = dragOffsetY,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "drag_offset_y"
+    )
     
-    // Remember previous track to detect changes via swipe
-    var previousTrackId by remember { mutableStateOf<String?>(null) }
+    // Calculate progress (0 = resting, 1 = fully dragged up)
+    val expandProgress = (-animatedOffsetY / 300f).coerceIn(0f, 1f)
+    val dismissProgress = (animatedOffsetY / 150f).coerceIn(0f, 1f)
     
-    LaunchedEffect(currentTrack?.id) {
-        if (previousTrackId != null && currentTrack?.id != previousTrackId) {
-            // Track changed, increment key for animation
-            trackChangeKey++
-        }
-        previousTrackId = currentTrack?.id
-    }
-    
-    // Alpha for drag-up gesture
-    val dragAlpha = (1f - (-verticalSwipeOffset / 300f).coerceIn(0f, 1f))
+    // Hide if fully dismissed
+    val isVisible = currentTrack != null && dismissProgress < 1f
 
     AnimatedVisibility(
-        visible = currentTrack != null,
-        enter = slideInVertically { it } + fadeIn(),
-        exit = slideOutVertically { it } + fadeOut(),
+        visible = isVisible,
+        enter = slideInVertically { it } + fadeIn(animationSpec = tween(150)),
+        exit = slideOutVertically { it } + fadeOut(animationSpec = tween(150)),
         modifier = modifier
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp)
-                .alpha(dragAlpha)
-                // Vertical drag to expand player
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragEnd = {
-                            if (verticalSwipeOffset < -100) {
-                                // Dragged up enough - expand player
-                                onExpandPlayer()
-                            }
-                            verticalSwipeOffset = 0f
-                        },
-                        onVerticalDrag = { _, dragAmount ->
-                            verticalSwipeOffset += dragAmount
-                        }
-                    )
+                .offset { IntOffset(0, animatedOffsetY.roundToInt()) }
+                .graphicsLayer {
+                    // Scale down as dragging up
+                    val scale = 1f - (expandProgress * 0.1f)
+                    scaleX = scale
+                    scaleY = scale
+                    // Fade as dragging down
+                    alpha = 1f - dismissProgress
                 }
-                // Horizontal swipe for prev/next
                 .pointerInput(Unit) {
-                    detectHorizontalDragGestures(
+                    detectDragGestures(
                         onDragEnd = {
                             when {
-                                horizontalSwipeOffset > 80 -> {
-                                    // Swipe right = previous song
-                                    lastSwipeDirection = SwipeDirection.RIGHT
-                                    viewModel.skipPrevious()
+                                // Dragged up far enough - expand
+                                dragOffsetY < -100f -> {
+                                    onExpandPlayer()
+                                    dragOffsetY = 0f
                                 }
-                                horizontalSwipeOffset < -80 -> {
-                                    // Swipe left = next song
-                                    lastSwipeDirection = SwipeDirection.LEFT
+                                // Dragged down far enough - dismiss
+                                dragOffsetY > 80f -> {
+                                    onDismiss()
+                                    dragOffsetY = 0f
+                                }
+                                // Horizontal swipe thresholds
+                                horizontalDragOffset > 100f -> {
+                                    viewModel.skipPrevious()
+                                    horizontalDragOffset = 0f
+                                    dragOffsetY = 0f
+                                }
+                                horizontalDragOffset < -100f -> {
                                     viewModel.skipNext()
+                                    horizontalDragOffset = 0f
+                                    dragOffsetY = 0f
+                                }
+                                else -> {
+                                    // Spring back
+                                    dragOffsetY = 0f
+                                    horizontalDragOffset = 0f
                                 }
                             }
-                            horizontalSwipeOffset = 0f
                         },
-                        onHorizontalDrag = { _, dragAmount ->
-                            horizontalSwipeOffset += dragAmount
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            // Prioritize vertical if more vertical drag
+                            if (abs(dragAmount.y) > abs(dragAmount.x) * 0.5f) {
+                                dragOffsetY += dragAmount.y
+                            } else {
+                                horizontalDragOffset += dragAmount.x
+                            }
                         }
                     )
                 },
@@ -170,87 +169,61 @@ fun MiniPlayer(
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Album art with animated content
-                    AnimatedContent(
-                        targetState = currentTrack,
-                        transitionSpec = {
-                            fadeIn(animationSpec = tween(200))
-                                .togetherWith(fadeOut(animationSpec = tween(200)))
-                        },
-                        label = "mini_player_art"
-                    ) { track ->
-                        Surface(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.MusicNote,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                    // Album art (fixed, no animation)
+                    Surface(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.MusicNote,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                            )
+                            currentTrack?.imageUrl?.let { url ->
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = "Album art",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
                                 )
-                                if (track?.imageUrl != null) {
-                                    AsyncImage(
-                                        model = track.imageUrl,
-                                        contentDescription = "Album art",
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(RoundedCornerShape(8.dp)),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Track info with directional animation
-                    AnimatedContent(
-                        targetState = Pair(currentTrack, trackChangeKey),
-                        transitionSpec = {
-                            // Determine slide direction based on last swipe
-                            val slideDirection = when (lastSwipeDirection) {
-                                SwipeDirection.RIGHT -> {
-                                    // Previous song: text slides from left
-                                    slideInHorizontally { -it } + fadeIn() togetherWith
-                                        slideOutHorizontally { it } + fadeOut()
-                                }
-                                SwipeDirection.LEFT -> {
-                                    // Next song: text slides from right
-                                    slideInHorizontally { it } + fadeIn() togetherWith
-                                        slideOutHorizontally { -it } + fadeOut()
-                                }
-                                SwipeDirection.NONE -> {
-                                    // Default: simple fade
-                                    fadeIn() togetherWith fadeOut()
-                                }
-                            }
-                            slideDirection.using(SizeTransform(clip = false))
-                        },
-                        label = "mini_player_info",
-                        modifier = Modifier.weight(1f)
-                    ) { (track, _) ->
-                        Column {
-                            Text(
-                                text = track?.name ?: "Unknown",
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.basicMarquee(
-                                    iterations = Int.MAX_VALUE
+                    // Track info with simple fast crossfade (no slide)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(4.dp)) // Clip to prevent overflow
+                    ) {
+                        Crossfade(
+                            targetState = currentTrack,
+                            animationSpec = tween(durationMillis = 150),
+                            label = "track_info_crossfade"
+                        ) { track ->
+                            Column {
+                                Text(
+                                    text = track?.name ?: "Unknown",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                            )
-                            Text(
-                                text = track?.artist ?: "Unknown Artist",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                                Text(
+                                    text = track?.artist ?: "Unknown Artist",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
 
@@ -264,10 +237,7 @@ fun MiniPlayer(
                     }
 
                     // Next button
-                    IconButton(onClick = { 
-                        lastSwipeDirection = SwipeDirection.LEFT
-                        viewModel.skipNext() 
-                    }) {
+                    IconButton(onClick = { viewModel.skipNext() }) {
                         Icon(
                             Icons.Filled.SkipNext,
                             contentDescription = "Next"

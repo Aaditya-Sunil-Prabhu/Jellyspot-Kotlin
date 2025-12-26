@@ -3,9 +3,16 @@ package com.jellyspot.ui.screens.player
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -63,10 +70,46 @@ fun PlayerScreen(
     // Dynamic theme color from album art
     val animatedColor = rememberDynamicColorFromUrl(track?.imageUrl)
     
-    // Gradient background with dynamic color
+    // Drag-down gesture state
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    val animatedDragOffset by animateFloatAsState(
+        targetValue = dragOffsetY,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "player_drag_offset"
+    )
+    // Calculate dismiss progress (0 = resting, 1 = fully dragged)
+    val dismissProgress = (animatedDragOffset / 400f).coerceIn(0f, 1f)
+    
+    // Gradient background with dynamic color and drag gesture
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .offset { IntOffset(0, animatedDragOffset.roundToInt()) }
+            .graphicsLayer {
+                // Scale down as dragging
+                val scale = 1f - (dismissProgress * 0.15f)
+                scaleX = scale
+                scaleY = scale
+                // Fade out as dragging
+                alpha = 1f - (dismissProgress * 0.5f)
+            }
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragEnd = {
+                        if (dragOffsetY > 200f) {
+                            // Dragged down enough - dismiss
+                            onNavigateBack()
+                        }
+                        dragOffsetY = 0f
+                    },
+                    onVerticalDrag = { _, dragAmount ->
+                        // Only allow downward drag
+                        if (dragOffsetY + dragAmount >= 0) {
+                            dragOffsetY += dragAmount
+                        }
+                    }
+                )
+            }
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
