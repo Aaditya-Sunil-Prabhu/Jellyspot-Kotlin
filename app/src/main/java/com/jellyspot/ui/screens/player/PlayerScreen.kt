@@ -753,10 +753,10 @@ fun QueueItemContent(
             .fillMaxWidth()
             .height(72.dp) // Fixed height for calculation
             .clickable(onClick = onTrackClick)
+            .zIndex(if (isDragging) 1f else 0f)
             .graphicsLayer {
                 translationY = if (isDragging) dragOffsetY else 0f
                 shadowElevation = if (isDragging) 8.dp.toPx() else 0f
-                zIndex = if (isDragging) 1f else 0f
                 alpha = if (isDragging) 0.9f else 1f
             },
         colors = ListItemDefaults.colors(
