@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -57,6 +58,7 @@ import com.jellyspot.ui.components.LyricsSection
 import com.jellyspot.ui.components.EqualizerIndicator
 import com.jellyspot.ui.components.SongOption
 import com.jellyspot.ui.components.SongOptionsSheet
+import com.jellyspot.ui.components.SongOptionsSheetCard
 import com.jellyspot.ui.theme.DynamicTheme
 import com.jellyspot.ui.theme.rememberDynamicColorFromUrl
 import kotlinx.coroutines.launch
@@ -239,8 +241,9 @@ fun PlayerScreen(
                 QueueView(
                     queue = uiState.queue,
                     currentTrack = track,
-                    onTrackClick = { viewModel.playFromQueue(it) },
-                    onRemoveClick = { viewModel.removeFromQueue(it) },
+                    isPlaying = uiState.isPlaying,
+                    onTrackClick = { index -> viewModel.playQueueTrack(index) },
+                    onRemoveClick = { index -> viewModel.removeFromQueue(index) },
                     modifier = Modifier.padding(paddingValues)
                 )
             } else {
@@ -523,6 +526,7 @@ fun PlayerScreen(
 private fun QueueView(
     queue: List<TrackEntity>,
     currentTrack: TrackEntity?,
+    isPlaying: Boolean,
     onTrackClick: (Int) -> Unit,
     onRemoveClick: (Int) -> Unit,
     modifier: Modifier = Modifier
@@ -571,7 +575,7 @@ private fun QueueView(
                         EqualizerIndicator(
                             modifier = Modifier.size(16.dp),
                             color = Color.Green,
-                            isAnimating = true // You could pass isPlaying state here if available in QueueView
+                            isAnimating = isPlaying
                         )
                     } else {
                         Text(

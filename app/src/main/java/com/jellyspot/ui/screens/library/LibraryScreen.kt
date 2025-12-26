@@ -5,10 +5,12 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -263,7 +265,7 @@ private fun PermissionDeniedState(onRequestPermission: () -> Unit) {
 @Composable
 private fun TracksList(
     tracks: List<TrackEntity>,
-    currentTrackId: Long?,
+    currentTrackId: String?,
     isPlaying: Boolean,
     onTrackClick: (TrackEntity) -> Unit,
     onFavoriteClick: (TrackEntity) -> Unit,
