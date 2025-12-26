@@ -166,22 +166,7 @@ fun DetailScreen(
                 tracks = tracks,
                 currentTrackId = playerUiState.currentTrack?.id,
                 isPlaying = playerUiState.isPlaying,
-                onTrackClick = { track -> playerViewModel.playAll(tracks.dropWhile { it.id != track.id }) }, // Play from this track onwards? Or just play track? 
-                // Better: Play the whole filtered list, starting at this index
-                // We need to find index in 'tracks'
-                // viewModel.playTracks(tracks, index)
-                // Existing playTrack just plays one? No, usually sets context.
-                // Let's us playAll with index if possible or just playTrack for now (which might just queue one or Context).
-                // Re-using Library logic: viewModel.playTrack(track) usually plays it.
-                // But for detailed context (Album), we want to play the Album.
-                // Let's implement onTrackClick to play the Album context starting at this song.
-                
-                // Since PlayerViewModel.playAll takes a list, we can pass the whole list and find index.
-                // But playAll puts them all in queue.
-                // We need `playAll(tracks, startIndex)`
-                // Currently `playAll` logic in VM: `playerManager.playTracks(tracksToPlay, 0)`
-                // I should overload `playAll` or modify it to accept startIndex. 
-                // For now, let's just make onTrackClick play the list starting from that track's index.
+
                 onTrackClick = { track -> 
                     val index = tracks.indexOfFirst { it.id == track.id }
                     if (index >= 0) {
