@@ -23,6 +23,7 @@ import com.jellyspot.ui.components.EqualizerIndicator
 import com.jellyspot.ui.components.TracksList
 import com.jellyspot.ui.screens.library.LibraryViewModel
 import com.jellyspot.ui.screens.player.PlayerViewModel
+import kotlinx.coroutines.flow.flowOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,20 +38,39 @@ fun DetailScreen(
     val libraryUiState by libraryViewModel.uiState.collectAsState()
     
     // Filter tracks based on type and id
-    val tracks = remember(type, id, libraryUiState.tracks) {
+    // Playlist data
+    val playlistTracksFlow = remember(type, id) {
+        if (type == "playlist" && id != "favorites") libraryViewModel.getPlaylistTracks(id) else flowOf(emptyList())
+    }
+    val playlistTracks by playlistTracksFlow.collectAsState(initial = emptyList())
+
+    val playlistDetailsFlow = remember(type, id) {
+        if (type == "playlist" && id != "favorites") libraryViewModel.getPlaylist(id) else flowOf(null)
+    }
+    val playlistDetails by playlistDetailsFlow.collectAsState(initial = null)
+    
+    // Filter tracks based on type and id
+    val tracks = remember(type, id, libraryUiState.tracks, libraryUiState.favoriteTracks, playlistTracks) {
         when (type) {
             "album" -> libraryUiState.tracks.filter { it.albumId.toString() == id || it.album == id }
             "artist" -> libraryUiState.tracks.filter { it.artistId.toString() == id || it.artist == id }
-            else -> emptyList() // Playlist logic requires separate fetching or improved state
+            "playlist" -> {
+                if (id == "favorites") libraryUiState.favoriteTracks
+                else playlistTracks
+            }
+            else -> emptyList()
         }
     }
 
     // Derivative info for header
-    val headerTitle = remember(type, id, tracks) {
+    val headerTitle = remember(type, id, tracks, playlistDetails) {
         when (type) {
             "album" -> tracks.firstOrNull()?.album ?: id
             "artist" -> tracks.firstOrNull()?.artist ?: id
-            "playlist" -> "Playlist" // Placeholder
+            "playlist" -> {
+                if (id == "favorites") "Liked Songs"
+                else playlistDetails?.name ?: "Playlist"
+            }
             else -> id
         }
     }
@@ -59,6 +79,7 @@ fun DetailScreen(
         when (type) {
             "album" -> tracks.firstOrNull()?.artist ?: "Unknown Artist"
             "artist" -> "${tracks.size} Songs"
+            "playlist" -> "${tracks.size} Songs"
             else -> ""
         }
     }

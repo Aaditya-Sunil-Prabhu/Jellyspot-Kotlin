@@ -43,7 +43,10 @@ fun LyricsSection(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                TextButton(onClick = onShowClick) {
+                TextButton(
+                    onClick = onShowClick,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+                ) {
                     Text("Show")
                 }
             }

@@ -279,6 +279,23 @@ class PlayerManager @Inject constructor(
     }
 
     /**
+     * Move track in queue.
+     */
+    fun moveTrack(fromIndex: Int, toIndex: Int) {
+        scope.launch {
+            val controller = mediaController ?: return@launch
+            controller.moveMediaItem(fromIndex, toIndex)
+
+            val updatedQueue = _queue.value.toMutableList()
+            if (fromIndex in updatedQueue.indices && toIndex in updatedQueue.indices) {
+                val item = updatedQueue.removeAt(fromIndex)
+                updatedQueue.add(toIndex, item)
+                _queue.value = updatedQueue
+            }
+        }
+    }
+
+    /**
      * Clear the queue.
      */
     fun clearQueue() {

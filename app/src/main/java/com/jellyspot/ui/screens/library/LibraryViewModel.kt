@@ -202,6 +202,20 @@ class LibraryViewModel @Inject constructor(
     }
 
     /**
+     * Get tracks for a playlist.
+     */
+    fun getPlaylistTracks(playlistId: String): Flow<List<TrackEntity>> {
+        return playlistRepository.getPlaylistTracks(playlistId)
+    }
+
+    /**
+     * Get playlist details.
+     */
+    fun getPlaylist(playlistId: String): Flow<PlaylistEntity?> {
+        return playlistRepository.getPlaylistById(playlistId)
+    }
+
+    /**
      * Delete a track from device.
      */
     fun deleteTrack(track: TrackEntity) {

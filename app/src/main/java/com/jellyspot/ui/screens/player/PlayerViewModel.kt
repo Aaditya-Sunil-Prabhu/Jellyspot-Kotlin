@@ -122,6 +122,10 @@ class PlayerViewModel @Inject constructor(
         playerManager.removeFromQueue(index)
     }
 
+    fun moveTrack(fromIndex: Int, toIndex: Int) {
+        playerManager.moveTrack(fromIndex, toIndex)
+    }
+
     fun playFromQueue(index: Int) {
         val queue = _uiState.value.queue
         if (index < queue.size) {

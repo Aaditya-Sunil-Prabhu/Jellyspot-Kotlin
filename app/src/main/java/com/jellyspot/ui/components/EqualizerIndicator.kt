@@ -1,4 +1,4 @@
-package com.jellyspot.ui.components
+ package com.jellyspot.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background

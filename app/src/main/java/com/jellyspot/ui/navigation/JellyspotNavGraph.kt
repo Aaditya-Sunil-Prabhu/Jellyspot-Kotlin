@@ -290,6 +290,12 @@ fun JellyspotNavGraph(
         // Persistent Player Overlay
         // Always composed to maintain state (e.g. scroll position matches lyrics)
         // Moved off-screen when collapsed
+        // Check if player is expanded (threshold: 50% or explicit state)
+        // Using derived state from offset
+        val isPlayerExpanded by remember { 
+            derivedStateOf { animatedPlayerOffset.value < (screenHeightPx / 2) } 
+        }
+
         PlayerScreen(
             modifier = Modifier
                 .offset { IntOffset(0, animatedPlayerOffset.value.roundToInt()) }
@@ -300,6 +306,7 @@ fun JellyspotNavGraph(
                         onVerticalDrag = { _, dragAmount -> onDrag(dragAmount) }
                     )
                 },
+            isExpanded = isPlayerExpanded,
             onDismiss = { 
                 scope.launch { 
                     animatedPlayerOffset.animateTo(screenHeightPx) 

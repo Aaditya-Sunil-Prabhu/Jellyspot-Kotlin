@@ -136,13 +136,7 @@ fun TrackItem(
         },
         trailingContent = {
             Row {
-                IconButton(onClick = onFavoriteClick) {
-                    Icon(
-                        if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Favorite",
-                        tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+
                 IconButton(onClick = onMenuClick) {
                     Icon(
                         Icons.Default.MoreVert,

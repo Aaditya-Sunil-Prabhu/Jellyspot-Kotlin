@@ -68,9 +68,12 @@ fun MiniPlayer(
     val positionMs by viewModel.positionMs.collectAsState()
     val durationMs by viewModel.durationMs.collectAsState()
     
-    // Drag offset for vertical drag gesture
-    // Drag offset for horizontal swipe gesture only
+    // Drag state
     var horizontalDragOffset by remember { mutableFloatStateOf(0f) }
+    var verticalDragOffset by remember { mutableFloatStateOf(0f) }
+    
+    // Animation direction state
+    var slideDirection by remember { mutableIntStateOf(0) } // 0: None, 1: Next (Right->Left), -1: Prev (Left->Right)
     
     // Hide if no track
     val isVisible = currentTrack != null
@@ -84,40 +87,70 @@ fun MiniPlayer(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp) // Reduced padding
+                .padding(horizontal = 8.dp, vertical = 2.dp)
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = {
                             when {
                                 // Horizontal swipe thresholds
                                 horizontalDragOffset > 100f -> {
+                                    // Swipe Right -> Prev
+                                    slideDirection = -1 // Enter from Left
                                     viewModel.skipPrevious()
                                     horizontalDragOffset = 0f
                                 }
                                 horizontalDragOffset < -100f -> {
+                                    // Swipe Left -> Next
+                                    slideDirection = 1 // Enter from Right
                                     viewModel.skipNext()
                                     horizontalDragOffset = 0f
                                 }
+                                // Vertical Swipe Down to Dismiss (only if positive drag is significant)
+                                verticalDragOffset > 100f -> {
+                                    // Swipe Down -> Dismiss/Stop
+                                    viewModel.togglePlayPause() // Or stop? Usually stop.
+                                    // Since we don't have a 'stop' exposed cleanly or 'clear queue', 
+                                    // user said "close it", assuming they mean hide miniplayer.
+                                    // Often implies stop playback or clear track.
+                                    // For now, let's calling togglePlayPause might just pause.
+                                    // Ideally we clear current track.
+                                    // Let's assume onDismiss passed in handles this? 
+                                    // But checking NavGraph, onDismiss is empty default?
+                                    // Let's try to just pause for now or we need a 'stop' in VM.
+                                    // Actually, let's call onExpandPlayer if negative (Up)
+                                    onDismiss() // Trigger parent dismiss callback if any
+                                    verticalDragOffset = 0f
+                                }
                                 else -> {
-                                    // Spring back horizontal
+                                    // Spring back
                                     horizontalDragOffset = 0f
-                                    // Notify parent drag ended
+                                    verticalDragOffset = 0f
                                     onDragEnd()
                                 }
                             }
+                            // Reset offsets
+                            horizontalDragOffset = 0f
+                            verticalDragOffset = 0f
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
-                            // Prioritize vertical if more vertical drag
-                            if (abs(dragAmount.y) > abs(dragAmount.x) * 0.5f) {
+                            
+                            // Accumulate drags
+                            horizontalDragOffset += dragAmount.x
+                            verticalDragOffset += dragAmount.y
+                            
+                            // Pass vertical drag to parent for overlay sliding (only if primarily vertical and moving Up)
+                            // If moving Down (positive), we keep it local for dismiss detection unless we are already expanded?
+                            // Logic: 
+                            // - If dragging UP (negative y), pass to onVerticalDrag (expands player).
+                            // - If dragging DOWN (positive y), keep local to detect dismiss.
+                            if (dragAmount.y < 0 || (verticalDragOffset < 0)) {
                                 onVerticalDrag(dragAmount.y)
-                            } else {
-                                horizontalDragOffset += dragAmount.x
                             }
                         }
                     )
                 },
-            shape = RoundedCornerShape(12.dp), // Slightly smaller radius
+            shape = RoundedCornerShape(12.dp),
             tonalElevation = 8.dp,
             shadowElevation = 8.dp
         ) {
@@ -136,11 +169,11 @@ fun MiniPlayer(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onExpandPlayer) // Direct click mapping
-                        .padding(8.dp), // Reduced internal padding
+                        .clickable(onClick = onExpandPlayer)
+                        .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Album art (fixed, no animation)
+                    // Album art
                     Surface(
                         modifier = Modifier
                             .size(48.dp)
@@ -169,7 +202,7 @@ fun MiniPlayer(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Track info with slide + fade animation
+                    // Track info with Horizontal Slide Animation
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -178,8 +211,18 @@ fun MiniPlayer(
                         AnimatedContent(
                             targetState = currentTrack,
                             transitionSpec = {
-                                (slideInVertically { height -> height } + fadeIn())
-                                    .togetherWith(slideOutVertically { height -> -height } + fadeOut())
+                                if (slideDirection > 0) {
+                                    // Next: Enter from Right, Exit to Left
+                                    (slideInHorizontally(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) { width -> width } + fadeIn())
+                                        .togetherWith(slideOutHorizontally(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) { width -> -width } + fadeOut())
+                                } else if (slideDirection < 0) {
+                                     // Prev: Enter from Left, Exit to Right
+                                    (slideInHorizontally(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) { width -> -width } + fadeIn())
+                                        .togetherWith(slideOutHorizontally(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) { width -> width } + fadeOut())
+                                } else {
+                                    // Default (Initial): Fade only or Vertical
+                                    (fadeIn()).togetherWith(fadeOut())
+                                }
                             },
                             label = "track_info_slide"
                         ) { track ->

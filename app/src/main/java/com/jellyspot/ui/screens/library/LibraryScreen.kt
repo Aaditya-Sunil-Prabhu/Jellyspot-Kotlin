@@ -201,7 +201,8 @@ fun LibraryScreen(
                     LibraryTab.PLAYLISTS -> PlaylistsList(
                         playlists = uiState.playlists,
                         onPlaylistClick = { onNavigateToDetail("playlist", it.id) },
-                        onDeletePlaylist = { viewModel.deletePlaylist(it.id) }
+                        onDeletePlaylist = { viewModel.deletePlaylist(it.id) },
+                        onLikedSongsClick = { onNavigateToDetail("playlist", "favorites") }
                     )
                 }
             }
@@ -369,12 +370,39 @@ private fun ArtistsList(tracks: List<TrackEntity>, onNavigateToDetail: (String, 
 private fun PlaylistsList(
     playlists: List<com.jellyspot.data.local.entities.PlaylistEntity>,
     onPlaylistClick: (com.jellyspot.data.local.entities.PlaylistEntity) -> Unit,
-    onDeletePlaylist: (com.jellyspot.data.local.entities.PlaylistEntity) -> Unit
+    onDeletePlaylist: (com.jellyspot.data.local.entities.PlaylistEntity) -> Unit,
+    onLikedSongsClick: () -> Unit
 ) {
-    if (playlists.isEmpty()) {
-        com.jellyspot.ui.components.EmptyState(Icons.Default.PlaylistPlay, "No playlists", "Create a playlist to organize your music")
-    } else {
-        LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
+    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
+        // Liked Songs Item
+        item {
+             ListItem(
+                modifier = Modifier.clickable { onLikedSongsClick() },
+                headlineContent = { Text("Liked Songs") },
+                supportingContent = { Text("Auto-generated playlist") },
+                leadingContent = {
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Favorite, 
+                                contentDescription = null, 
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+            )
+        }
+
+        if (playlists.isEmpty()) {
+            item {
+                 com.jellyspot.ui.components.EmptyState(Icons.Default.PlaylistPlay, "No playlists", "Create a playlist to organize your music")
+            }
+        } else {
             items(playlists) { playlist ->
                 ListItem(
                     modifier = Modifier.clickable { onPlaylistClick(playlist) },
