@@ -277,55 +277,8 @@ fun PlayerScreen(
 
                         // ... Rest of Player Content ... 
                     }
-                    // We need to keep the rest of the file intact, but replace_file_content is block based. 
-                    // I will continue ensuring the structure is correct.
-                    // Instead of replacing huge chunk, I'll wrap QueueView in AnimatedVisibility at the end of the Box
-                }
-
-                // Queue Overlay (Slides up)
-                AnimatedVisibility(
-                    visible = uiState.showQueue,
-                    enter = slideInVertically { it } + fadeIn(),
-                    exit = slideOutVertically { it } + fadeOut(),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surface) // Solid background to cover player
-                ) {
-                    QueueView(
-                        queue = uiState.queue,
-                        currentTrack = track,
-                        isPlaying = uiState.isPlaying,
-                        onTrackClick = { index -> viewModel.playFromQueue(index) },
-                        onRemoveClick = { index -> viewModel.removeFromQueue(index) },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-                                if (currentTrack?.imageUrl != null) {
-                                    AsyncImage(
-                                        model = currentTrack.imageUrl,
-                                        contentDescription = "Album art",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.MusicNote,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(100.dp),
-                                            tint = Color.White.copy(alpha = 0.5f)
-                                        )
-                                    }
-                                }
-                            }
                         }
+
                         
                         Spacer(modifier = Modifier.height(32.dp))
                         
@@ -524,6 +477,27 @@ fun PlayerScreen(
                     )
                     
                     Spacer(modifier = Modifier.height(100.dp)) // Bottom padding
+                    }
+                }
+                
+                // Queue Overlay
+                AnimatedVisibility(
+                    visible = uiState.showQueue,
+                    enter = slideInVertically { it } + fadeIn(),
+                    exit = slideOutVertically { it } + fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surface)
+                ) {
+                    QueueView(
+                        queue = uiState.queue,
+                        currentTrack = track,
+                        isPlaying = uiState.isPlaying,
+                        onTrackClick = { index -> viewModel.playFromQueue(index) },
+                        onRemoveClick = { index -> viewModel.removeFromQueue(index) },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
         }
@@ -540,6 +514,7 @@ fun PlayerScreen(
                 showOptionsSheet = false
             }
         )
+    }
     }
 }
 
