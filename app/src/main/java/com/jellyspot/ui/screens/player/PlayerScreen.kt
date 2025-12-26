@@ -95,7 +95,6 @@ fun PlayerScreen(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-            topBar = {
                 TopAppBar(
                     title = { 
                         Box(contentAlignment = Alignment.Center) {
