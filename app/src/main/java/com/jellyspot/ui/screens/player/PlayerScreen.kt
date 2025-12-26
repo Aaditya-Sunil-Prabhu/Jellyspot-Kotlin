@@ -820,55 +820,7 @@ fun QueueItemContent(
         }
     )
 }
-                                .clip(RoundedCornerShape(8.dp)),
-                            headlineContent = {
-                                Text(
-                                    track.name,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = if (isCurrentTrack) MaterialTheme.colorScheme.primary else Color.White
-                                )
-                            },
-                            supportingContent = {
-                                Text(
-                                    track.artist, 
-                                    maxLines = 1, 
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = Color.White.copy(alpha = 0.6f)
-                                )
-                            },
-                            leadingContent = {
-                                if (isCurrentTrack) {
-                                    EqualizerIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        isAnimating = isPlaying
-                                    )
-                                } else {
-                                    Text(
-                                        "${index + 1}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = Color.White.copy(alpha = 0.5f)
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                if (!isLocked) {
-                                    Icon(Icons.Default.DragHandle, contentDescription = "Reorder", tint = Color.White.copy(alpha = 0.5f))
-                                }
-                            },
-                            // Opaque background to hide the Swipe background
-                            colors = ListItemDefaults.colors(
-                                containerColor = if (isCurrentTrack) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface
-                            )
-                        )
-                    }
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-        }
-    }
-}
+
 
 private fun formatTime(ms: Long): String {
     val totalSeconds = ms / 1000
