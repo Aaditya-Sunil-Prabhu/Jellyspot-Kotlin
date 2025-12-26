@@ -211,8 +211,15 @@ class LibraryViewModel @Inject constructor(
     /**
      * Get playlist details.
      */
+import kotlinx.coroutines.flow.flow
+
+    /**
+     * Get playlist details.
+     */
     fun getPlaylist(playlistId: String): Flow<PlaylistEntity?> {
-        return playlistRepository.getPlaylistById(playlistId)
+        return flow {
+            emit(playlistRepository.getPlaylistById(playlistId))
+        }
     }
 
     /**

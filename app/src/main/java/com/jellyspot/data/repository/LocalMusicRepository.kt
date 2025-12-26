@@ -251,6 +251,13 @@ class LocalMusicRepository @Inject constructor(
     }
 
     /**
+     * Get track by ID.
+     */
+    suspend fun getTrackById(trackId: String): TrackEntity? {
+        return trackDao.getTrackById(trackId)
+    }
+
+    /**
      * Search tracks by name, artist, or album.
      */
     suspend fun searchTracks(query: String): List<TrackEntity> {

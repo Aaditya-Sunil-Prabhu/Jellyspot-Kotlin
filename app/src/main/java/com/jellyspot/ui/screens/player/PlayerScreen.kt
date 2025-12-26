@@ -11,6 +11,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.platform.LocalDensity
@@ -70,8 +72,6 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(
