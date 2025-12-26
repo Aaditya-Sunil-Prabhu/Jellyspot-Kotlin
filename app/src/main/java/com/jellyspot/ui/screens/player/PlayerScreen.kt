@@ -331,6 +331,7 @@ fun PlayerScreen(
                                 }
                             }
                             }
+                        }
 
 
                         
@@ -537,7 +538,7 @@ fun PlayerScreen(
                     
                     Spacer(modifier = Modifier.height(100.dp)) // Bottom padding
                     }
-                }
+
                 
                 // Queue Overlay
                 AnimatedVisibility(
@@ -577,6 +578,7 @@ fun PlayerScreen(
         )
     }
     }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
