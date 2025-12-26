@@ -58,7 +58,6 @@ import com.jellyspot.ui.components.LyricsSection
 import com.jellyspot.ui.components.EqualizerIndicator
 import com.jellyspot.ui.components.SongOption
 import com.jellyspot.ui.components.SongOptionsSheet
-import com.jellyspot.ui.components.SongOptionsSheetCard
 import com.jellyspot.ui.theme.DynamicTheme
 import com.jellyspot.ui.theme.rememberDynamicColorFromUrl
 import kotlinx.coroutines.launch
@@ -242,7 +241,7 @@ fun PlayerScreen(
                     queue = uiState.queue,
                     currentTrack = track,
                     isPlaying = uiState.isPlaying,
-                    onTrackClick = { index -> viewModel.playQueueTrack(index) },
+                    onTrackClick = { index -> viewModel.playFromQueue(index) },
                     onRemoveClick = { index -> viewModel.removeFromQueue(index) },
                     modifier = Modifier.padding(paddingValues)
                 )
