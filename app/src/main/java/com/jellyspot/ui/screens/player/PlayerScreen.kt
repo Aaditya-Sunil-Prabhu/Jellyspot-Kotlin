@@ -273,11 +273,9 @@ fun PlayerScreen(
                                     }
                                 }
                             }
+                            }
                         }
 
-                        // ... Rest of Player Content ... 
-                    }
-                        }
 
                         
                         Spacer(modifier = Modifier.height(32.dp))
