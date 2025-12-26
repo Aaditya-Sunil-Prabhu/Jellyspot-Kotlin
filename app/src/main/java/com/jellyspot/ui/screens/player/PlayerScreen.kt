@@ -516,7 +516,6 @@ fun PlayerScreen(
         )
     }
     }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
