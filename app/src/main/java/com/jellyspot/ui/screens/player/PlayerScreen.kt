@@ -60,6 +60,10 @@ import com.jellyspot.ui.components.SongOption
 import com.jellyspot.ui.components.SongOptionsSheet
 import com.jellyspot.ui.theme.DynamicTheme
 import com.jellyspot.ui.theme.rememberDynamicColorFromUrl
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,7 +71,6 @@ import kotlinx.coroutines.launch
 fun PlayerScreen(
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit,
-    onDrag: (Float) -> Unit = {},
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -77,25 +80,6 @@ fun PlayerScreen(
     // Back Handler for Queue
     BackHandler(enabled = uiState.showQueue) {
         viewModel.toggleQueue()
-    }
-    
-    // Nested Scroll Connection to capture drag-down on content
-    val nestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                // If scrolling down (available.y > 0) and we are at the top (scrollState.value == 0)
-                // Consume the scroll as a drag to dismiss
-                if (available.y > 0 && scrollState.value == 0) {
-                    onDrag(available.y)
-                    return available // Consume all
-                }
-                return Offset.Zero
-            }
-        }
     }
     
     // Song options sheet state
@@ -236,23 +220,13 @@ fun PlayerScreen(
                 )
             }
         ) { paddingValues ->
-            if (uiState.showQueue) {
-                QueueView(
-                    queue = uiState.queue,
-                    currentTrack = track,
-                    isPlaying = uiState.isPlaying,
-                    onTrackClick = { index -> viewModel.playFromQueue(index) },
-                    onRemoveClick = { index -> viewModel.removeFromQueue(index) },
-                    modifier = Modifier.padding(paddingValues)
-                )
-            } else {
-                // Scrollable player content
+            }
+        ) { paddingValues ->
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                // Main Player Content (Below Queue)
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .nestedScroll(nestedScrollConnection) // Attach nested scroll
                         .verticalScroll(scrollState)
                 ) {
                     // Main player content
@@ -262,7 +236,7 @@ fun PlayerScreen(
                             .padding(horizontal = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Spacer(modifier = Modifier.height(32.dp)) // Increased spacing
+                        Spacer(modifier = Modifier.height(32.dp))
                         
                         // Album Art
                         AnimatedContent(
@@ -280,6 +254,56 @@ fun PlayerScreen(
                                     .fillMaxWidth()
                                     .aspectRatio(1f)
                             ) {
+                                if (currentTrack?.imageUrl != null) {
+                                    AsyncImage(
+                                        model = currentTrack.imageUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.MusicNote,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(64.dp),
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // ... Rest of Player Content ... 
+                    }
+                    // We need to keep the rest of the file intact, but replace_file_content is block based. 
+                    // I will continue ensuring the structure is correct.
+                    // Instead of replacing huge chunk, I'll wrap QueueView in AnimatedVisibility at the end of the Box
+                }
+
+                // Queue Overlay (Slides up)
+                AnimatedVisibility(
+                    visible = uiState.showQueue,
+                    enter = slideInVertically { it } + fadeIn(),
+                    exit = slideOutVertically { it } + fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surface) // Solid background to cover player
+                ) {
+                    QueueView(
+                        queue = uiState.queue,
+                        currentTrack = track,
+                        isPlaying = uiState.isPlaying,
+                        onTrackClick = { index -> viewModel.playFromQueue(index) },
+                        onRemoveClick = { index -> viewModel.removeFromQueue(index) },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
                                 if (currentTrack?.imageUrl != null) {
                                     AsyncImage(
                                         model = currentTrack.imageUrl,
@@ -521,6 +545,7 @@ fun PlayerScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun QueueView(
     queue: List<TrackEntity>,
@@ -530,8 +555,21 @@ private fun QueueView(
     onRemoveClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val listState = rememberLazyListState()
+    
+    // Auto-scroll to current track
+    LaunchedEffect(currentTrack) {
+        if (currentTrack != null) {
+            val index = queue.indexOfFirst { it.id == currentTrack.id }
+            if (index >= 0) {
+                listState.animateScrollToItem(index)
+            }
+        }
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
+        state = listState,
         contentPadding = PaddingValues(16.dp)
     ) {
         item {
@@ -544,52 +582,77 @@ private fun QueueView(
         }
         itemsIndexed(queue, key = { _, track -> track.id }) { index, track ->
             val isCurrentTrack = track.id == currentTrack?.id
-            ListItem(
-                modifier = Modifier
-                    .clickable { onTrackClick(index) }
-                    .then(
-                        if (isCurrentTrack) Modifier.background(
-                            Color.White.copy(alpha = 0.1f),
-                            RoundedCornerShape(8.dp)
-                        ) else Modifier
-                    ),
-                headlineContent = {
-                    Text(
-                        track.name,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = if (isCurrentTrack) Color.White else Color.White.copy(alpha = 0.8f)
-                    )
-                },
-                supportingContent = {
-                    Text(
-                        track.artist, 
-                        maxLines = 1, 
-                        overflow = TextOverflow.Ellipsis,
-                        color = Color.White.copy(alpha = 0.6f)
-                    )
-                },
-                leadingContent = {
-                    if (isCurrentTrack) {
-                        EqualizerIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = Color.Green,
-                            isAnimating = isPlaying
-                        )
-                    } else {
-                        Text(
-                            "${index + 1}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.5f)
-                        )
+            
+            // Swipe to dismiss
+            val dismissState = rememberSwipeToDismissBoxState(
+                confirmValueChange = {
+                    if (it == SwipeToDismissBoxValue.EndToStart || it == SwipeToDismissBoxValue.StartToEnd) {
+                        onRemoveClick(index)
+                        true
+                    } else false
+                }
+            )
+
+            SwipeToDismissBox(
+                state = dismissState,
+                backgroundContent = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Red.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
                     }
                 },
-                trailingContent = {
-                    IconButton(onClick = { onRemoveClick(index) }) {
-                        Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White)
-                    }
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                contentContent = {
+                    ListItem(
+                        modifier = Modifier
+                            .clickable { onTrackClick(index) }
+                            .then(
+                                if (isCurrentTrack) Modifier.background(
+                                    Color.White.copy(alpha = 0.1f),
+                                    RoundedCornerShape(8.dp)
+                                ) else Modifier
+                            ),
+                        headlineContent = {
+                            Text(
+                                track.name,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = if (isCurrentTrack) Color.White else Color.White.copy(alpha = 0.8f)
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                track.artist, 
+                                maxLines = 1, 
+                                overflow = TextOverflow.Ellipsis,
+                                color = Color.White.copy(alpha = 0.6f)
+                            )
+                        },
+                        leadingContent = {
+                            if (isCurrentTrack) {
+                                EqualizerIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Color.Green,
+                                    isAnimating = isPlaying
+                                )
+                            } else {
+                                Text(
+                                    "${index + 1}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White.copy(alpha = 0.5f)
+                                )
+                            }
+                        },
+                        trailingContent = {
+                            Icon(Icons.Default.DragHandle, contentDescription = "Reorder", tint = Color.White.copy(alpha = 0.5f))
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                    )
+                }
             )
         }
     }

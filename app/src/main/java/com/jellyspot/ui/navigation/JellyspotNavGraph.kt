@@ -258,7 +258,11 @@ fun JellyspotNavGraph(
                 ) { backStackEntry ->
                     val type = backStackEntry.arguments?.getString("type") ?: ""
                     val id = backStackEntry.arguments?.getString("id") ?: ""
-                    // TODO: DetailScreen
+                    com.jellyspot.ui.screens.detail.DetailScreen(
+                        type = type,
+                        id = id,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
                 }
             }
         }
@@ -268,8 +272,8 @@ fun JellyspotNavGraph(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    // Gap above BottomNavBar (approx 80dp for navbar + 24dp gap)
-                    .padding(bottom = 104.dp) 
+                    // Gap above BottomNavBar (approx 80dp for navbar + 40dp gap)
+                    .padding(bottom = 120.dp) 
                     .graphicsLayer {
                         alpha = miniPlayerAlpha
                         translationY = miniPlayerTranslationY
@@ -300,8 +304,7 @@ fun JellyspotNavGraph(
                 scope.launch { 
                     animatedPlayerOffset.animateTo(screenHeightPx) 
                 } 
-            },
-            onDrag = { delta -> onDrag(delta) } // Handle drag from nested scroll
+            }
         )
     }
 }

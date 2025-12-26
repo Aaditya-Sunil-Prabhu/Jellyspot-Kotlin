@@ -10,6 +10,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import com.jellyspot.MainActivity
 
 /**
  * Media playback foreground service using Media3.
@@ -36,9 +37,17 @@ class JellyspotMediaService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true) // Pause when headphones disconnected
             .build()
 
+        // Create PendingIntent for notification click
+        val intent = packageManager.getLaunchIntentForPackage(packageName) ?: Intent(this, MainActivity::class.java)
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            this, 0, intent, 
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         // Create MediaSession
         mediaSession = MediaSession.Builder(this, player!!)
             .setCallback(MediaSessionCallback())
+            .setSessionActivity(pendingIntent)
             .build()
     }
 

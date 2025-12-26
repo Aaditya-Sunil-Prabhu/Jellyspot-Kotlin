@@ -137,6 +137,17 @@ fun LibraryScreen(
                 }
             }
         }
+        floatingActionButton = {
+            if (uiState.tracks.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    text = { Text("Shuffle") },
+                    icon = { Icon(Icons.Default.Shuffle, contentDescription = null) },
+                    onClick = { viewModel.toggleShuffle(); viewModel.skipNext() }, // Simple shuffle play simulation
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier

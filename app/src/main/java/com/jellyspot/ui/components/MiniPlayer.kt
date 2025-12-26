@@ -136,7 +136,7 @@ fun MiniPlayer(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onExpandPlayer() }
+                        .clickable(onClick = onExpandPlayer) // Direct click mapping
                         .padding(8.dp), // Reduced internal padding
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -169,16 +169,19 @@ fun MiniPlayer(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Track info with simple fast crossfade (no slide)
+                    // Track info with slide + fade animation
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(4.dp)) // Clip to prevent overflow
+                            .clip(RoundedCornerShape(4.dp))
                     ) {
-                        Crossfade(
+                        AnimatedContent(
                             targetState = currentTrack,
-                            animationSpec = tween(durationMillis = 150),
-                            label = "track_info_crossfade"
+                            transitionSpec = {
+                                (slideInVertically { height -> height } + fadeIn())
+                                    .togetherWith(slideOutVertically { height -> -height } + fadeOut())
+                            },
+                            label = "track_info_slide"
                         ) { track ->
                             Column {
                                 Text(
