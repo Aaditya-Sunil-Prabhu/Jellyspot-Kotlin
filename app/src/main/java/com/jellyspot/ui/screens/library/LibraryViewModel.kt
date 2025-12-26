@@ -11,6 +11,7 @@ import com.jellyspot.data.repository.SettingsRepository
 import com.jellyspot.player.PlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -211,7 +212,7 @@ class LibraryViewModel @Inject constructor(
     /**
      * Get playlist details.
      */
-import kotlinx.coroutines.flow.flow
+
 
     /**
      * Get playlist details.
