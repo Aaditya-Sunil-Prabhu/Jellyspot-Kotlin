@@ -274,7 +274,6 @@ fun PlayerScreen(
                                 }
                             }
                             }
-                        }
 
 
                         
@@ -499,7 +498,7 @@ fun PlayerScreen(
                 }
             }
         }
-    }
+
     
     // Song options bottom sheet
     if (showOptionsSheet && track != null) {

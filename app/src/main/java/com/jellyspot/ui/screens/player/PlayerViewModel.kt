@@ -128,4 +128,13 @@ class PlayerViewModel @Inject constructor(
             playerManager.playTracks(queue, index)
         }
     }
+    fun playAll(tracks: List<TrackEntity>, shuffle: Boolean = false, startIndex: Int = 0) {
+        val tracksToPlay = if (shuffle) tracks.shuffled() else tracks
+        // If shuffled, startIndex doesn't mean much unless we shuffle AND ensure the clicked one is first.
+        // For simple "Shuffle", we usually just start at 0 of the shuffled list.
+        // If startIndex is provided with shuffle=false, we play tracks starting at that index.
+        val start = if (shuffle) 0 else startIndex
+        
+        playerManager.playTracks(tracksToPlay, start)
+    }
 }

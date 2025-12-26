@@ -139,7 +139,7 @@ fun LibraryScreen(
                 ExtendedFloatingActionButton(
                     text = { Text("Shuffle") },
                     icon = { Icon(Icons.Default.Shuffle, contentDescription = null) },
-                    onClick = { viewModel.toggleShuffle(); viewModel.skipNext() }, // Simple shuffle play simulation
+                    onClick = { playerViewModel.playAll(uiState.tracks, shuffle = true) },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
@@ -181,7 +181,7 @@ fun LibraryScreen(
 
                 // Content based on selected tab
                 when (uiState.selectedTab) {
-                    LibraryTab.SONGS -> TracksList(
+                    LibraryTab.SONGS -> com.jellyspot.ui.components.TracksList(
                         tracks = uiState.tracks,
                         currentTrackId = currentTrack?.id,
                         isPlaying = isPlaying,
@@ -270,131 +270,9 @@ private fun PermissionDeniedState(onRequestPermission: () -> Unit) {
     }
 }
 
-@Composable
-private fun TracksList(
-    tracks: List<TrackEntity>,
-    currentTrackId: String?,
-    isPlaying: Boolean,
-    onTrackClick: (TrackEntity) -> Unit,
-    onFavoriteClick: (TrackEntity) -> Unit,
-    isFavorite: (TrackEntity) -> Boolean,
-    onMenuClick: (TrackEntity) -> Unit = {}
-) {
-    if (tracks.isEmpty()) {
-        EmptyState(
-            icon = Icons.Default.MusicNote,
-            title = "No songs found",
-            subtitle = "Tap refresh to scan your device for music"
-        )
-    } else {
-        LazyColumn(
-            contentPadding = PaddingValues(vertical = 8.dp)
-        ) {
-            items(tracks, key = { it.id }) { track ->
-                TrackItem(
-                    track = track,
-                    isCurrentTrack = track.id == currentTrackId,
-                    isPlaying = isPlaying,
-                    onClick = { onTrackClick(track) },
-                    onFavoriteClick = { onFavoriteClick(track) },
-                    isFavorite = isFavorite(track),
-                    onMenuClick = { onMenuClick(track) }
-                )
-            }
-        }
-    }
-}
 
-@Composable
-private fun TrackItem(
-    track: TrackEntity,
-    isCurrentTrack: Boolean,
-    isPlaying: Boolean,
-    onClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
-    isFavorite: Boolean,
-    onMenuClick: () -> Unit = {}
-) {
-    ListItem(
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .then(if (isCurrentTrack) Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)) else Modifier),
-        headlineContent = {
-            Text(
-                track.name, 
-                maxLines = 1, 
-                overflow = TextOverflow.Ellipsis,
-                color = if (isCurrentTrack) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-            )
-        },
-        supportingContent = {
-            Text(
-                "${track.artist} • ${track.album}",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        leadingContent = {
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.MusicNote,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
-                    )
-                    if (track.imageUrl != null) {
-                        AsyncImage(
-                            model = track.imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                    
-                    // Equalizer Overlay for current track
-                    if (isCurrentTrack) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            EqualizerIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                isAnimating = isPlaying
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        trailingContent = {
-            Row {
-                IconButton(onClick = onFavoriteClick) {
-                    Icon(
-                        if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Favorite",
-                        tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onMenuClick) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = "More options",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    )
-}
+// Removed duplications (TracksList, TrackItem, EmptyState) as they are now in components/TrackList.kt
+// AlbumsList, ArtistsList, PlaylistsList, FoldersList, CreatePlaylistDialog, and Helpers remain here.
 
 @Composable
 private fun AlbumsList(tracks: List<TrackEntity>, onNavigateToDetail: (String, String) -> Unit) {
@@ -403,7 +281,7 @@ private fun AlbumsList(tracks: List<TrackEntity>, onNavigateToDetail: (String, S
     }.distinctBy { it.first }
 
     if (albums.isEmpty()) {
-        EmptyState(Icons.Default.Album, "No albums", "Albums from your music will appear here")
+        com.jellyspot.ui.components.EmptyState(Icons.Default.Album, "No albums", "Albums from your music will appear here")
     } else {
         LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
             items(albums) { (albumId, albumName, albumTracks) ->
@@ -449,7 +327,7 @@ private fun ArtistsList(tracks: List<TrackEntity>, onNavigateToDetail: (String, 
     }.distinctBy { it.first }
 
     if (artists.isEmpty()) {
-        EmptyState(Icons.Default.Person, "No artists", "Artists from your music will appear here")
+        com.jellyspot.ui.components.EmptyState(Icons.Default.Person, "No artists", "Artists from your music will appear here")
     } else {
         LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
             items(artists) { (artistId, artistName, artistTracks) ->
@@ -494,7 +372,7 @@ private fun PlaylistsList(
     onDeletePlaylist: (com.jellyspot.data.local.entities.PlaylistEntity) -> Unit
 ) {
     if (playlists.isEmpty()) {
-        EmptyState(Icons.Default.PlaylistPlay, "No playlists", "Create a playlist to organize your music")
+        com.jellyspot.ui.components.EmptyState(Icons.Default.PlaylistPlay, "No playlists", "Create a playlist to organize your music")
     } else {
         LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
             items(playlists) { playlist ->
@@ -521,61 +399,6 @@ private fun PlaylistsList(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun FoldersList(
-    folders: List<com.jellyspot.data.repository.FolderInfo>,
-    selectedFolders: Set<String>,
-    onFolderToggle: (String) -> Unit,
-    onSelectAll: () -> Unit
-) {
-    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
-        item {
-            ListItem(
-                modifier = Modifier.clickable(onClick = onSelectAll),
-                headlineContent = { Text("All Folders") },
-                supportingContent = { Text("Show music from all folders") },
-                leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
-                trailingContent = {
-                    RadioButton(
-                        selected = selectedFolders.isEmpty(),
-                        onClick = onSelectAll
-                    )
-                }
-            )
-            HorizontalDivider()
-        }
-        items(folders) { folder ->
-            val isSelected = selectedFolders.isEmpty() || selectedFolders.contains(folder.path)
-            ListItem(
-                modifier = Modifier.clickable { onFolderToggle(folder.path) },
-                headlineContent = { Text(folder.displayName) },
-                supportingContent = { Text("${folder.trackCount} songs") },
-                leadingContent = { Icon(Icons.Default.FolderOpen, contentDescription = null) },
-                trailingContent = {
-                    Checkbox(
-                        checked = isSelected,
-                        onCheckedChange = { onFolderToggle(folder.path) }
-                    )
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyState(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
