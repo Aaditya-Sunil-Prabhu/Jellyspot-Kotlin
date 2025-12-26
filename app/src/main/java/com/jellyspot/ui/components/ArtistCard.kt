@@ -10,12 +10,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
 import coil3.compose.AsyncImage
 
 /**
  * Artist card component for player screen.
  */
-@Composable
 @Composable
 fun ArtistCard(
     artistName: String,
@@ -29,7 +31,7 @@ fun ArtistCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = androidx.compose.ui.graphics.Color.Transparent // Let background show through
+            containerColor = Color.Transparent // Let background show through
         )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -37,7 +39,7 @@ fun ArtistCard(
             Text(
                 text = "Artists",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = androidx.compose.ui.graphics.Color.White,
+                color = Color.White,
                 modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
             )
             
@@ -66,9 +68,9 @@ fun ArtistCard(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .androidx.compose.foundation.background(
-                            androidx.compose.ui.graphics.Brush.verticalGradient(
-                                colors = listOf(androidx.compose.ui.graphics.Color.Transparent, androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.8f)),
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
                                 startY = 100f
                             )
                         )
@@ -83,12 +85,12 @@ fun ArtistCard(
                     Text(
                         text = artistName,
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                        color = androidx.compose.ui.graphics.Color.White
+                        color = Color.White
                     )
                     Text(
                         text = subscriberCount,
                         style = MaterialTheme.typography.bodySmall,
-                        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f)
+                        color = Color.White.copy(alpha = 0.7f)
                     )
                 }
             }
