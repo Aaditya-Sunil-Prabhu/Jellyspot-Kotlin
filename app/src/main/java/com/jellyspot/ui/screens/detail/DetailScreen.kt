@@ -196,7 +196,7 @@ fun DetailScreen(
                          playerViewModel.playAll(tracks, startIndex = index) 
                     }
                 },
-                onFavoriteClick = { playerViewModel.toggleFavorite() }, // This toggles *current* track favorite in VM. We need to toggle *specific* track.
+
                 // PlayerViewModel.toggleFavorite() uses currentTrack.
                 // LibraryViewModel.toggleFavorite(id) exists.
                 // So use LibraryViewModel.

@@ -575,7 +575,7 @@ private fun QueueView(
                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
                     }
                 },
-                contentContent = {
+                content = {
                     ListItem(
                         modifier = Modifier
                             .clickable { onTrackClick(index) }
